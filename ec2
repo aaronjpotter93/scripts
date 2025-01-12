@@ -1,0 +1,8 @@
+#!/bin/zsh
+echo
+echo "...Running ssh -i $AWS_KEY_PATH ec2-user@$AWS_SERVER_IP"
+echo "Remember:"
+echo "To Logout: ctrl + d"
+echo 
+
+ssh -i "$AWS_KEY_PATH" ec2-user@"$AWS_SERVER_IP"
