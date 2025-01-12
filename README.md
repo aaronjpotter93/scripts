@@ -1,4 +1,4 @@
-# Terminal Scripts
+# My Personal Helper Terminal Scripts
 
 ### ec2
 
