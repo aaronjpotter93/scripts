@@ -2,12 +2,16 @@
 
 ### ec2
 
-> A script to simplify the process of SSHing into an AWS EC2 instance. It automates the command by storing the key path and instance details, so I don’t have to type them out manually every time.
+> Automates SSH access to AWS EC2 instances by storing key paths and instance details, eliminating the need to manually enter them each time.
 
 ### opn
 
-> This script shortens the keystrokes needed to open scripts in Visual Studio Code. Instead of typing out the full path, I can simply provide the name of the desired script, and the command handles the rest. A convenient way to quickly tweak my scripts.
+> Simplifies opening scripts in Visual Studio Code by allowing you to provide just the script name, reducing the need to type full paths.
 
 ### treecat
 
-> A script that combines the functionality of the native tree and cat commands. While not the most practical script, it has its moments of utility when exploring directory structures and their file contents.
+> Merges the functionality of the `tree` and `cat` commands, useful for exploring directory structures and viewing file contents simultaneously.
+
+### budget
+
+> Generates a budget based on income and savings priorities, helping to plan spending scenarios over a year for financial sustainability.
