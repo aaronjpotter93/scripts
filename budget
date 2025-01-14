@@ -1,0 +1,942 @@
+#!/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
+
+### IMPORTS
+import argparse
+import calendar
+from datetime import datetime
+                        
+# ARG PARSER
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process budget arguments.")
+    parser.add_argument("-i", "--income", nargs=3, type=float, metavar=('hourly_rate', 'hours_worked', 'days_worked'),
+                                default=[13.0, 7, 2], help="Hourly rate, hours worked, and days worked for income calculation") ## FIX ME -- PUT BACK 5 FOR DEFAULT VALUE IN PLACE OF 0
+    
+    parser.add_argument("-ai", "--outlier", nargs=3, type=float, metavar=('hourly_rate', 'hours_worked', 'days_worked'),
+                               default=[18.0, 3, 0], help="Hourly rate, hours worked, and days worked for income calculation")
+    #                          default=[18.0, 3, 16]
+    parser.add_argument("-if", "--if_flex", nargs=1, type=int, metavar="new income if delivered n# more blocks", help="Print the full overview")
+    parser.add_argument("-o", "--overview", action="store_true", help="Print the full overview")
+    parser.add_argument("-j", "--jobs", action="store_true", help="Job Breakdown")
+    parser.add_argument("-r", "--restaurant", type=int, default=20, help="A number to override the default restaurant trip value")
+    parser.add_argument("-g", "--groceries", type=int, default=68, help="A number to override the default grocery trip value")
+    parser.add_argument("-f", "--flex", action="store_true", help="Most recent gas expenditure on Amazon Flex Block")
+    parser.add_argument("-fa", "--flex_all", action="store_true", help="All Delivery Block Summaries")
+    parser.add_argument("-sf", "--strict_fixed_dict", action="store_true", help="Strict Fixed Breakdown")
+    args = parser.parse_args()
+    rtrip = args.restaurant
+    gtrip = args.groceries
+
+    # ANSI escape codes for colors
+class Colors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    SPENT = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'  # Reset to default color
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    UNDERLINEOFF = '\033[24m'
+    SnD_code = ''
+
+### DECLARES MONTH VARIABLES
+month_number = datetime.now().month
+month_title = calendar.month_name[month_number]
+
+def count_mondays_and_fridays():
+    # Get the current year and month
+    now = datetime.now()
+    year = now.year
+    month = now.month
+
+    # Get the total number of days in the current month
+    _, num_days = calendar.monthrange(year, month)
+
+    # Initialize counters for Mondays and Fridays
+    monday_count = 0
+    friday_count = 0
+
+    # Loop through each day of the month
+    for day in range(1, num_days + 1):
+        weekday = calendar.weekday(year, month, day) 
+        if weekday == calendar.MONDAY:
+            monday_count += 1
+        elif weekday == calendar.FRIDAY:
+            friday_count += 1
+
+    return monday_count, friday_count
+
+# Call the function and print the results
+mondays, fridays = count_mondays_and_fridays()
+
+# incomes
+wgu_supplement = 397
+# apparently i haved nearly double wgu income and don't know whats going on
+# wgu_supplement = 685
+
+### AARON JOBS ###
+jobs = []
+
+# Define deduction variables
+after_tax_rate = 0.92
+after_gas_rate = 0.77
+
+# Outlier
+s_outlier = "Outlier"
+outlier_hourly, outlier_hours, outlier_days = args.outlier
+outlier = outlier_hourly * outlier_hours * outlier_days * after_tax_rate
+jobs.append((s_outlier, outlier))
+
+# Grocery Outlet
+s_grocery = "Grocery Outlet"
+aaron_hourly, aaron_hours, aaron_days = args.income
+grocery_outlet = aaron_hourly * aaron_hours * aaron_days * after_tax_rate
+jobs.append((s_grocery, grocery_outlet))
+
+# Peer Tutor WGU
+# s_peer = "Peer Tutor"
+# peer_weeks = 4
+# peer_hourly = 20
+# peer_hours = 15
+# peer_income = peer_hourly * peer_hours * peer_weeks * after_tax_rate
+# jobs.append((s_peer, peer_income))
+
+# DJ
+s_dj = "DJ"
+gig = 600
+# num_events = 1
+num_events = 1
+dj = gig * num_events
+jobs.append((s_dj, dj))
+
+# Amazon Flex Income Definitions
+class Flex:
+    def __init__ (self, offer: float, miles: float, gallons: float, ppg: float, date: str):
+        self.date = date
+        self.offer = offer
+        self.miles = miles
+        self.gallons = gallons
+        self.ppg = ppg
+
+        self.m_g = miles/gallons
+        self.gas: float = ppg * gallons
+        self.profit = offer - self.gas
+        self.p_take = (self.profit / offer) * 100
+
+    def __repr__(self):
+        return f"Flex(hours={self.hours}, miles={self.miles}, earnings={self.earnings}, gas_price={self.gas_price}, date='{self.date}')"
+
+    def print_summary(self):
+        print(f"\t\t\tBlock Summary:\n\t\t\t> {Colors.BOLD}Date:{Colors.ENDC} {self.date}\n\t\t\t> {Colors.BOLD}Offer:{Colors.ENDC} {Colors.OKCYAN}${self.offer:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}Miles:{Colors.ENDC} {Colors.OKBLUE}{self.miles:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}Gallons:{Colors.ENDC} {Colors.OKBLUE}{self.gallons:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}M/G:{Colors.ENDC} {Colors.OKBLUE}{self.m_g:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}PPG:{Colors.ENDC} {Colors.SPENT}${self.ppg:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}Gas:{Colors.ENDC} {Colors.SPENT}${self.gas:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}Profit:{Colors.ENDC} {Colors.OKGREEN}${self.profit:.2f}{Colors.ENDC}\n\t\t\t> {Colors.BOLD}P_Take:{Colors.ENDC} {Colors.OKCYAN}%{self.p_take:.0f}{Colors.ENDC}\n")
+
+def calculate_averages(blocks):
+    total_offers = sum(block.offer for block in blocks)
+    total_miles = sum(block.miles for block in blocks)
+    total_gallons = sum(block.gallons for block in blocks)
+    total_ppg = sum(block.ppg for block in blocks)
+    
+    num_blocks = len(blocks)
+    return (
+        total_offers / num_blocks,
+        total_miles / num_blocks,
+        total_gallons / num_blocks,
+        total_ppg / num_blocks
+    )
+
+#September
+# lunes = Flex(63, 85, 3.96, 3.599, "Sep 9")
+# martes = Flex(72, 77, 2.79, 3.629, "Sep 10")
+# miercoles = Flex(63, 35.6, 1.02, 3.6, "Sep 11")
+# lunes2 = Flex(63, 68, 2.993, 3.589, "Sep 16")
+# martes2 = Flex(72, 57.7, 2.484, 3.589, "Sep 17")
+# lunes3 = Flex(64.28, 78.7, 2.659, 3.589, "Sep 23")
+# martes3 = Flex(72, 59.6, 2.193, 3.589, "Sep 24")
+
+#October
+jueves = Flex(54, 47.7, 1.9958, 3.519, "Oct 3")
+viernes = Flex(63, 44, 1.630, 3.519, "Oct 4")
+jueves2 = Flex(54, 54.6, 1.88, 3.489, "Oct 10")
+
+flex_blocks = []
+#flex_blocks = [lunes, martes, miercoles, lunes2, martes2, lunes3, martes3, lunes, lunes, lunes]
+flex_blocks = [jueves, viernes, jueves2]
+
+average_offers, average_miles, average_gallons, average_ppg = calculate_averages(flex_blocks)
+
+if args.if_flex:
+    if_blocks = args.if_flex[0]
+    for x in range(if_blocks):
+        flex_blocks.append(Flex(average_offers, average_miles, average_gallons, average_ppg, "Hypothetical"))
+tl_flex_miles = 0
+tl_flex_gas = 0
+tl_flex_profit = 0
+
+for day in flex_blocks:
+    tl_flex_miles += day.miles
+    tl_flex_gas += day.gas
+    tl_flex_profit += day.profit
+
+# Amazon Flex
+s_flex = "Flex"
+# flex_shifts = 10
+# flex_hourly = 15.75
+# flex_hours = 4
+# flex = flex_shifts * flex_hourly * flex_hours * after_gas_rate
+jobs.append((s_flex, tl_flex_profit))
+# jobs.append((s_flex, flex))
+
+# aaron jobs total
+aaron_month = 0
+for name, income in jobs:
+    aaron_month += income
+aaron_income = aaron_month
+
+# aaron logged hours implementation for outlier.ai
+
+megan_scheduled_shifts_this_month = 0
+megan_hourly = 17
+megan_hours = 6
+megan_month = megan_hours * megan_hourly * megan_scheduled_shifts_this_month * after_tax_rate
+
+# megan
+megan_salary = 2130
+megan_monthly = megan_month
+megan_income = megan_salary + megan_monthly
+
+# total income
+total_income = megan_income + aaron_income + wgu_supplement
+salary = total_income * 12
+
+# income tier set to 0 before program logic determines correct tier
+income_tier = 0
+
+#used for calculating savings at the end
+years_savings = .75
+
+
+# defining rent rate
+#1710 - 1542 = $168 fluff charges
+# base_rent = 1542 #before September 28th
+base_rent = 1597 #after September 28th
+
+fluff_rent = 162.36
+
+"""
+Fluff charges consist of:
+Car Port $35.33
+Liability Only $15
+Water ~ 7.11
+Trash ~ $16.66
+Sewer ~ $18.84
+Pest Control Fee ~ $5.00
+Common Area Gas ~ $0.15
+Common Area Electric ~ $6.38
+Service Fee ~ $7.30
+Convinience Fee ~ $50.59
+"""
+
+### DEFINE DEFAULT BUDGET BOUNDRIES
+class Spending:
+    def __init__(self, grocery_trip, restaurant_trip):
+        self.grocery_trip = grocery_trip
+        self.restaurant_trip = restaurant_trip
+spending_tier = None
+
+# Income Tier Definitions:
+tier_2_floor = 1000
+tier_3_floor = 2000
+tier_4_floor = 4333
+tier_5_floor = 6000
+
+if aaron_income <= tier_2_floor:
+    spending_tier = Spending(68, 20)
+elif tier_2_floor < aaron_income <= tier_3_floor:
+    spending_tier = Spending(68, 20)
+elif tier_3_floor < aaron_income <= tier_4_floor:
+    spending_tier = Spending(80, 25)
+elif tier_4_floor < aaron_income <= tier_5_floor:
+    spending_tier = Spending(80, 25)
+elif aaron_income > 6000:
+    spending_tier = Spending(80, 25)
+
+
+
+
+
+
+
+
+#######################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+    
+#improve dialogue for years
+years = "years"
+if years_savings <= 1:
+    years = "year"
+
+# defining strict fixed expenses
+rent = base_rent + fluff_rent
+car_payment = 275.84
+car_insurance = 98.32  # Hyundai $54.33 Liability ONLY, Honda CRV $43.99 Full Coverage
+renters_insurance = 15.5  # bill $93 every 6 months
+internet = 40
+car_maintenance = 150
+utilities = 70
+
+# Fixed expenses key pairs (dictionary)
+strict_fixed_dict = {
+    "rent": rent,
+    "car_payment": car_payment,
+    "car_insurance": car_insurance,
+    "renters_insurance": renters_insurance,
+    "internet": internet,
+    "car_maintenance": car_maintenance,
+    "utilities": utilities
+}
+
+# classifying tiers for dynamic budgeting
+
+# Tier 1: For the 9 months I'm still in school 
+class Tier_1:
+    def __init__(self):
+        self.tier = 1
+        self.next_tier_floor = tier_2_floor
+
+        # strict variable
+        self.strict_variable = {
+            'groceries': gtrip * mondays,
+            'g_trip': gtrip,
+            'gas': 180,
+            'restaurants': rtrip * fridays,
+            'r_trip': rtrip
+        }
+
+        # discretionary spendings
+        self.discretionary_spendings = {
+            'icloud': 0,
+            'dates': 0,
+            'gifts': 0,
+            'donations': 0,
+            'personal': 15,
+            'gaming': 0,
+            'clothes_shoes_accessories': 0,
+            'entertainment': 0,
+            'social': 0,
+            'recreation': 0,
+            'personal_care': 0,
+            'classroom': 10,
+            'furnishing': 0,
+            'other': 0,
+            'travel': 0
+        }
+
+        # discretionary savings
+        self.discretionary_savings = {
+            'home_down': 0,
+            'roth_ira': 0,
+            'megan_savings': 0,
+            'high_yield': 0
+        }
+
+    def print_section(self, section_name):
+        section = getattr(self, section_name, None)
+        if section is None:
+            print(f"Section '{section_name}' does not exist.")
+            return
+
+        for attribute, value in section.items():
+            if isinstance(value, (int, float)) and value > 0:
+                print(f"\t> {attribute}: {Colors.SPENT}${value:,.2f}{Colors.ENDC}")
+# second tier
+class Tier_2:
+    def __init__(self):
+        self.tier = 2
+        self.next_tier_floor = tier_3_floor
+
+        # strict variable
+        self.strict_variable = {
+            'groceries': gtrip * mondays, #was $80
+            'g_trip': gtrip,
+            'gas': 180,
+            'restaurants': rtrip * fridays,  #was 25
+            'r_trip': rtrip
+        }
+        
+        # discretionary spendings
+        self.discretionary_spendings = {
+            'icloud': 0,
+            'dates': 30,
+            'gifts': 0,
+            'donations': 0,
+            'personal': 60,
+            'gaming': 0,
+            'clothes_shoes_accessories': 0,
+            'entertainment': 30,
+            'social': 0,
+            'recreation': 0,
+            'personal_care': 0,
+            'classroom': 10,
+            'furnishing': 0,
+            'other': 0,
+            'travel': 15
+        }
+
+        # discretionary savings
+        self.discretionary_savings = {
+            'home_down': 0,
+            'roth_ira': 0,
+            'megan_savings': 200,
+            'high_yield': 100
+        }
+        
+    def print_section(self, section_name):
+        section = getattr(self, section_name, None)
+        if section is None:
+            print(f"Section '{section_name}' does not exist.")
+            return
+
+        for attribute, value in section.items():
+            if isinstance(value, (int, float)) and value > 0:
+                print(f"\t> {attribute}: {Colors.SPENT}${value:,.2f}{Colors.ENDC}")
+
+# third tier
+class Tier_3:
+    def __init__(self):
+        self.tier = 3
+        self.next_tier_floor = tier_4_floor
+       
+        # strict variable
+        self.strict_variable = {
+            'groceries': gtrip * mondays, #was $80
+            'g_trip': gtrip,
+            'gas': 180,
+            'restaurants': rtrip * fridays,  #was 25
+            'r_trip': rtrip
+        }
+
+        # discretionary spendings
+        self.discretionary_spendings = {
+            'icloud': 0,
+            'dates': 50,
+            'gifts': 30,
+            'donations': 0,
+            'personal': 60,
+            'gaming': 15,
+            'clothes_shoes_accessories': 50,
+            'entertainment': 45,
+            'social': 100,
+            'recreation': 40,
+            'personal_care': 0,
+            'classroom': 10,
+            'furnishing': 0,
+            'other': 0,
+            'travel': 15
+        }
+
+        # discretionary savings
+        self.discretionary_savings = {
+            'home_down': 100,
+            'roth_ira': aaron_income * 0.10,
+            'megan_savings': 250,
+            'high_yield': 250
+        }
+        
+    def print_section(self, section_name):
+        section = getattr(self, section_name, None)
+        if section is None:
+            print(f"Section '{section_name}' does not exist.")
+            return
+
+        for attribute, value in section.items():
+            if isinstance(value, (int, float)) and value > 0:
+                print(f"\t> {attribute}: {Colors.SPENT}${value:,.2f}{Colors.ENDC}")
+
+
+### DEFINE SPENDING TIER BOUNDRIES
+if aaron_income <= tier_2_floor:  # take home salary < $12,000 (part time jobs)
+    income_tier = Tier_1()
+elif aaron_income > tier_2_floor and aaron_income <= tier_3_floor:  # take home salary > $12,000 < $26,496 (not quite full time)
+    income_tier = Tier_2()
+elif aaron_income > tier_3_floor and aaron_income <= tier_4_floor:  # take home salary > $24,496 < $52,000 (at least full time at $15/hr)
+    income_tier = Tier_3()
+elif aaron_income > tier_4_floor and aaron_income <= tier_5_floor:  # take home salary > $52,000 < $72,000 (big boy job)
+    income_tier = Tier_3()
+elif aaron_income > tier_5_floor and aaron_income <= 8333:  # take home salary > $72,000 < $100,000
+    income_tier = Tier_3()
+
+# Define hardware terms
+class Hardware:
+    def __init__(self, lifespan, price, item_tier, income_tier, fr):
+        # defining properties of hardware
+        self.lifespan = lifespan
+        self.item_tier = item_tier
+        self.price = price
+        self.fr = fr
+
+        # calculate lifespan and rate
+        if self.item_tier <= income_tier.tier:
+            self.rate = (self.price / self.lifespan) / 12
+            if fr == 2:
+                self.rate = self.rate * 2
+        else:
+            self.rate = 0
+            self.rate_for_two = 0
+
+# defining hardware tech items of interest and their tiers to budget for
+earbuds = Hardware(5, 250, 3, income_tier, 1)
+headphones = Hardware(5, 350, 3, income_tier, 2)
+watch = Hardware(5, 300, 3, income_tier, 2)
+phone = Hardware(6, 900, 3, income_tier, 2)
+tablet = Hardware(6, 728, 4, income_tier, 1)
+laptop = Hardware(8, 1699, 3, income_tier, 2)
+desktopPC = Hardware(8, 1200, 3, income_tier, 1)
+car = Hardware(30, 30000, 3, income_tier, 1)
+
+hardware_list = [earbuds, headphones, watch, phone, tablet, laptop, desktopPC, car]
+hardware_names = ["earbuds", "headphones", "watch", "phone", "tablet", "laptop", "desktopPC", "car"]
+
+if isinstance(income_tier, Tier_1) or isinstance(income_tier, Tier_2) or isinstance(income_tier, Tier_3):
+    # strict variable
+    next_tier_floor = income_tier.next_tier_floor
+    groceries = income_tier.strict_variable['groceries']
+    gas = income_tier.strict_variable['gas']
+    restaurants = income_tier.strict_variable['restaurants']
+
+    # discretionary spendings assignments
+    icloud = income_tier.discretionary_spendings['icloud']
+    dates = income_tier.discretionary_spendings['dates']
+    gifts = income_tier.discretionary_spendings['gifts']
+    donations = income_tier.discretionary_spendings['donations']
+    personal = income_tier.discretionary_spendings['personal']
+    gaming = income_tier.discretionary_spendings['gaming']
+    clothes_shoes_accessories = income_tier.discretionary_spendings['clothes_shoes_accessories']
+    entertainment = income_tier.discretionary_spendings['entertainment']
+    social = income_tier.discretionary_spendings['social']
+    recreation = income_tier.discretionary_spendings['recreation']
+    personal_care = income_tier.discretionary_spendings['personal_care']
+    classroom = income_tier.discretionary_spendings['classroom']
+    furnishing = income_tier.discretionary_spendings['furnishing']
+    other = income_tier.discretionary_spendings['other']
+    travel = income_tier.discretionary_spendings['travel']
+    
+    # discretionary savings for long-term goals assignments
+    home_down = income_tier.discretionary_savings['home_down']
+    roth_ira = income_tier.discretionary_savings['roth_ira']
+    megan_savings = income_tier.discretionary_savings['megan_savings']
+    high_yield = income_tier.discretionary_savings['high_yield']
+
+# discretionary savings for hardware
+hardware_savings = (
+        headphones.rate
+        + watch.rate
+        + phone.rate
+        + tablet.rate
+        + earbuds.rate
+        + laptop.rate
+        + desktopPC.rate 
+        + car.rate
+)
+
+# category totals
+strict_fixed = car_payment + rent + car_insurance + internet + car_maintenance + utilities + renters_insurance
+soft_fixed = groceries + gas + restaurants
+discretionary_spendings = dates + gifts + personal + social + recreation + personal_care + clothes_shoes_accessories + donations + classroom + furnishing + other + icloud + travel
+discretionary_savings = hardware_savings + roth_ira + home_down + megan_savings + high_yield
+
+#total budget
+total_budget = strict_fixed + soft_fixed + discretionary_spendings + discretionary_savings
+pre_discretionary_remaining = total_income - (strict_fixed + soft_fixed)
+surplus_deficit = total_income - total_budget
+
+# category totals as percentages
+psurplus_deficit = (surplus_deficit / total_income ) * 100
+pstrict_fixed = ( strict_fixed / total_income ) * 100
+psoft_fixed = ( soft_fixed / total_income ) * 100
+pdiscretionary_spendings = ( discretionary_spendings / total_income ) * 100
+pdiscretionary_savings = ( discretionary_savings / total_income ) * 100
+
+# more as percentages
+prent = (rent / total_income) * 100
+pred = (pre_discretionary_remaining / total_income) * 100
+#year total budget
+year_expenses = total_budget * 12
+surplus_deficit_year = salary - year_expenses
+
+#Income to Fixed Expenses Ratio
+aaron_income_strict_ratio = aaron_income /  strict_fixed
+
+#Target Income based on a ratio of income/expenses
+ratio = 1.11009373
+target = total_budget * ratio
+
+#more to make to next tier
+tier_gap = next_tier_floor - aaron_income
+
+###############################################################################################
+
+
+
+
+# here is where old print statements go:
+
+
+
+###############################################################################################
+
+def print_overview():
+    ### PRINT HEADER
+    print("\n")
+    print(f"{Colors.HEADER}=== Overview ==={Colors.ENDC}")
+    print("\n")
+    
+    ### PRINT INCOME
+    print(f"{Colors.UNDERLINE}{Colors.BOLD}Sources of Income: Month Overview{Colors.ENDC}")
+    print(f"WGU Supplement: {Colors.OKGREEN}${wgu_supplement:,.2f}{Colors.ENDC}")
+    print(f"Megan's Take Home Pay: {Colors.OKGREEN}${megan_income:,.2f}{Colors.ENDC}")
+    print(f"Aaron's Take Home Pay: {Colors.OKGREEN}${aaron_income:,.2f}{Colors.ENDC}")
+    print(f"{Colors.OKGREEN}{Colors.UNDERLINE}{Colors.BOLD}Total Income:{Colors.UNDERLINEOFF} ${total_income:,.2f}{Colors.ENDC}")
+    if (total_income / total_budget) < ratio:
+        gap = target - total_income
+        aaron_target = aaron_income + gap
+        print(f"\t> {Colors.FAIL}Target Income: {Colors.OKCYAN}${aaron_target:,.2f}{Colors.ENDC}")
+        print(f"\t> {Colors.FAIL}Make at least: {Colors.OKCYAN}${gap:,.2f}{Colors.ENDC}{Colors.FAIL} more to be on target.{Colors.ENDC}")
+    print(f"{Colors.SPENT}{Colors.UNDERLINE}{Colors.BOLD}Monthly Spendings:{Colors.UNDERLINEOFF} ${total_budget:,.2f}{Colors.ENDC}")
+    print(f"** Income Tier: {income_tier.tier} **")
+    print("\n")
+    
+    ### PRINT PLANNED BALANCE
+    buffer = "  "
+    over = ""
+    print(f"\t{Colors.OKGREEN}${total_income:,.2f}{Colors.ENDC}")
+    print(f"-\t{Colors.SPENT}${total_budget:,.2f}{Colors.ENDC}")
+    if surplus_deficit >= 0:
+        SnD_code = Colors.OKGREEN
+        if surplus_deficit >= 1000:
+            buffer = ""
+            over = "_"
+    else:
+        buffer = " "
+        SnD_code = Colors.FAIL
+        if surplus_deficit <= -1000:
+            buffer = ""
+            over = "_"
+
+    print(f"_________________{over}")
+    print(f"=\t{buffer}{SnD_code}${surplus_deficit:,.2f}{Colors.ENDC}")
+    print("\n")
+    
+    
+        ### PRINT REMAINING BALANCE
+    pre = ""
+    if discretionary_spendings > 0 and surplus_deficit > 0:
+        pre = "\t\t      "
+        print(f"{Colors.UNDERLINE}{Colors.BOLD}Pre Discretionary Dispersment Remaining:{Colors.ENDC} ${pre_discretionary_remaining:,.2f}{Colors.ENDC}")
+        print(f"{pred:.0f}% of Total Income")
+    if surplus_deficit > 0:
+        print(f"{Colors.UNDERLINE}{Colors.BOLD}Remaining Balance:{Colors.UNDERLINEOFF}{Colors.OKGREEN} ${surplus_deficit:,.2f}{Colors.ENDC}")
+        print(f"{psurplus_deficit:.0f}% of Total Income")
+        print("\n")
+    else:
+        print(f"{Colors.UNDERLINE}{Colors.BOLD}Over Budget:{Colors.FAIL}{Colors.UNDERLINEOFF} ${surplus_deficit:,.2f}{Colors.ENDC}")
+        print(f"\t>> {psurplus_deficit:.0f}% of Total Income")
+        print("\n")
+    
+    ### PRINT STRICT FIXED
+    print(f"{Colors.UNDERLINE}Strict Fixed aka Bills:{Colors.SPENT}{Colors.BOLD} ${strict_fixed:,.2f}{Colors.ENDC}")
+    print(f"{pstrict_fixed:.0f} % of Total Income")
+    print("---------------------------------------")
+    print(f"Rent: {Colors.SPENT}${rent:,.2f} ({prent:.0f} % of Total Income){Colors.ENDC}")
+    print(f"Car: {Colors.SPENT}${car_payment:,.2f}{Colors.ENDC}")
+    print(f"Car Insurance: {Colors.SPENT}${car_insurance:,.2f}{Colors.ENDC}")
+    print(f"Renters Insurance: {Colors.SPENT}${renters_insurance:,.2f}{Colors.ENDC}")
+    print(f"Internet: {Colors.SPENT}${internet:,.2f}{Colors.ENDC}")
+    print(f"Utilities: {Colors.SPENT}${utilities:,.2f}{Colors.ENDC}")
+    print("\n")
+    
+    ### PRINT STRICT VARIABLE
+    print(f"{Colors.UNDERLINE}Strict Variable Spendings:{Colors.SPENT}{Colors.BOLD} ${soft_fixed:,.2f}{Colors.ENDC}")
+    print(f"{psoft_fixed:.0f} % of Total Income")
+    print("---------------------------------------")
+    print(f"Groceries: {Colors.SPENT}${groceries:,.2f}{Colors.ENDC}")
+    print(f"Groceries Per Week: {Colors.SPENT}${(groceries / mondays):,.2f}{Colors.ENDC}")
+    print(f"Gas: {Colors.SPENT}${gas:,.2f}{Colors.ENDC}")
+    print(f"Restaurants: {Colors.SPENT}${restaurants:,.2f}{Colors.ENDC}")
+    print(f"Restaurants Per Week: {Colors.SPENT}${(restaurants / fridays):,.2f}{Colors.ENDC}")
+    print("\n")
+    
+    ### PRINT DISCRETIONARY SPENDINGS
+    print(f"{Colors.UNDERLINE}Discretionary Spendings: {Colors.SPENT}{Colors.BOLD}${discretionary_spendings:,.2f}{Colors.ENDC}")
+    print(f"{pdiscretionary_spendings:.0f} % of Total Income{Colors.ENDC}")
+    print("---------------------------------------")
+    if income_tier.tier > 1:
+        print(f"Dates: {Colors.SPENT}${dates:,.2f}{Colors.ENDC}")
+        print(f"Gifts: {Colors.SPENT}${gifts:,.2f}{Colors.ENDC}")
+        print(f"Donations: {Colors.SPENT}${donations:,.2f}{Colors.ENDC}")
+        print(f"Personal: {Colors.SPENT}${personal:,.2f}{Colors.ENDC}")
+        print(f"Gaming: {Colors.SPENT}${gaming:,.2f}{Colors.ENDC}")
+        print(f"Clothes, Shoes, and Accessories: {Colors.SPENT}${clothes_shoes_accessories:,.2f}{Colors.ENDC}")
+        print(f"Entertainment: {Colors.SPENT}${entertainment:,.2f}{Colors.ENDC}")
+        print(f"Social: {Colors.SPENT}${social:,.2f}{Colors.ENDC}")
+        print(f"Recreation: {Colors.SPENT}${recreation:,.2f}{Colors.ENDC}")
+        print(f"Personal Care: {Colors.SPENT}${personal_care:,.2f}{Colors.ENDC}")
+        print(f"iCloud: {Colors.SPENT}${icloud:,.2f}{Colors.ENDC}")
+        print(f"Travel: {Colors.SPENT}${travel:,.2f}{Colors.ENDC}")
+        print(f"Classroom: {Colors.SPENT}${classroom:,.2f}{Colors.ENDC}")
+        print(f"Furnishing: {Colors.SPENT}${furnishing:,.2f}{Colors.ENDC}")
+        print(f"Other: {Colors.SPENT}${other:,.2f}{Colors.ENDC}")
+        print("\n")
+    else:
+        print("You are broke :P")
+        print(f"Personal: {Colors.SPENT}${personal:,.2f}{Colors.ENDC}")
+        print("\n")
+    
+    ### PRINT DISCRETIONARY SAVINGS
+    print(f"{Colors.UNDERLINE}Discretionary Savings: {Colors.SPENT}{Colors.BOLD}${discretionary_savings:,.2f}{Colors.ENDC}")
+    print(f"{pdiscretionary_savings:.0f} % of Total Income{Colors.ENDC}")
+    print("---------------------------------------")
+    if income_tier.tier > 1:
+        print(f"Home Down Payment: {Colors.SPENT}${home_down:,.2f}{Colors.ENDC}")
+        print(f"Roth IRA Contributions: {Colors.SPENT}${roth_ira:,.2f}{Colors.ENDC}")
+        print(f"Megan's Savings: {Colors.SPENT}${megan_savings:,.2f}{Colors.ENDC}")
+        print(f"High-Yield Savings: {Colors.SPENT}${high_yield:,.2f}{Colors.ENDC}")
+        print(f"Hardware Savings: {Colors.SPENT}${hardware_savings:,.2f}{Colors.ENDC}")
+        print("\n")
+    else:
+        print("You are broke :P")
+        print(f"Megan's Savings: {Colors.SPENT}${megan_savings:,.2f}{Colors.ENDC}")
+        print("\n")
+
+# END OF OVERVIEW PRINT DEF
+#########################################################################
+
+# PRINT JOBS SCHEDULED
+
+def print_jobs_scheduled():
+        # print jobs that have an income this month planned
+    if len(jobs) > 1:
+        print(f"\n{Colors.HEADER}== Jobs Scheduled for this month =={Colors.ENDC}")
+    else:
+        print(f"{Colors.HEADER}== Job scheduled for this month =={Colors.ENDC}")
+    for x, y in jobs:
+        if y > 0:
+            print(f"\t> {x}\n\t  {Colors.OKGREEN}${y:,.2f}{Colors.ENDC}")
+            if x == "Flex" and args.flex is False and args.flex_all is False and args.if_flex is False:
+                print("\n\t\t> No Amazon Flex Blocks Delevired.\n")
+            elif x == "Flex" and (args.flex or args.flex_all):
+                print(f"\t\t> Blocks Delivered: {Colors.OKBLUE}{len(flex_blocks)}{Colors.ENDC}")
+                print(f"\t\t> Month Miles Driven: {Colors.OKBLUE}{tl_flex_miles:.2f}{Colors.ENDC}")
+                print(f"\t\t> Month Gas Spent: {Colors.SPENT}${tl_flex_gas:.2f}{Colors.ENDC}")
+                print(f"\t\t> Delivery Averages: ")
+                Flex(average_offers, average_miles, average_gallons, average_ppg, "...").print_summary()
+                print(f"\t\t> Block Earnings (after gas deductions):")
+                for z in flex_blocks:
+                    print(f"\t\t\t> {Colors.OKGREEN}${z.profit:.2f}{Colors.ENDC}")
+                print(f"\t\t> Deduct from Flex Income:")
+                for z in flex_blocks:
+                    print(f"\t\t\t> Gas: {Colors.SPENT}${z.gas:.2f}{Colors.ENDC}")
+                # This block should execute only if -flex_all is passed
+                if args.flex_all or (args.if_flex and args.flex_all):
+                    print(f"\t\t> All Deliveries:")
+                    for z in flex_blocks:
+                        z.print_summary()
+
+
+# END OF JOBS SCHEDULED
+#########################################################################
+
+# PRINT CASHFLOW DEF
+
+def print_cashflow():
+    ### PRRINT HEADER
+    print("\n")
+    print(f"{Colors.HEADER}=== Cashflow ==={Colors.ENDC}")
+    print("\n")
+    
+    ### PRINT INCOME
+    print(f"{Colors.UNDERLINE}{Colors.BOLD}{month_title}:{Colors.ENDC}")
+    print(f"WGU Supplement: {Colors.OKGREEN}${wgu_supplement:,.2f}{Colors.ENDC}")
+    print(f"Megan's Take Home Pay: {Colors.OKGREEN}${megan_income:,.2f}{Colors.ENDC}")
+    print(f"Aaron's Take Home Pay: {Colors.OKGREEN}${aaron_income:,.2f}{Colors.ENDC}")
+    print(f"{Colors.OKGREEN}{Colors.UNDERLINE}{Colors.BOLD}Total Income:{Colors.UNDERLINEOFF} ${total_income:,.2f}{Colors.ENDC}")
+    if (total_income / total_budget) < ratio:
+        gap = target - total_income
+        aaron_target = aaron_income + gap
+        print(f"\t> {Colors.FAIL}Total Target Income: {Colors.OKCYAN}${target:,.2f}{Colors.ENDC}")
+        print(f"\t> {Colors.FAIL}Target Aaron Income: {Colors.OKCYAN}${aaron_target:,.2f}{Colors.ENDC}")
+        print(f"\t> {Colors.FAIL}Make at least: {Colors.OKCYAN}${gap:,.2f}{Colors.ENDC}{Colors.FAIL} more to be on target.{Colors.ENDC}")
+    print(f"\t> Make {Colors.OKCYAN}${tier_gap:,.2f}{Colors.ENDC} more to reach next tier")
+    print(f"\t> Next Tier Total: {Colors.OKCYAN}${(next_tier_floor + megan_income + wgu_supplement):,.2f}{Colors.ENDC}")
+    print(f"{Colors.SPENT}{Colors.UNDERLINE}{Colors.BOLD}Monthly Spendings:{Colors.UNDERLINEOFF} ${total_budget:,.2f}{Colors.ENDC}")
+    print(f"** Income Tier: {income_tier.tier} **")
+    print("\n")
+    
+    ### PRINT PLANNED BALANCE
+    buffer = "  "
+    over = ""
+    print(f"\t{Colors.OKGREEN}${total_income:,.2f}{Colors.ENDC}")
+    print(f"-\t{Colors.SPENT}${total_budget:,.2f}{Colors.ENDC}")
+    if surplus_deficit >= 0:
+        SnD_code = Colors.OKGREEN
+        if surplus_deficit >= 1000:
+            buffer = ""
+            over = "_"
+    else:
+        buffer = " "
+        SnD_code = Colors.FAIL
+        if surplus_deficit <= -1000:
+            buffer = ""
+            over = "_"
+
+    print(f"_________________{over}")
+    print(f"=\t{buffer}{SnD_code}${surplus_deficit:,.2f}{Colors.ENDC}")
+    print("\n")
+    
+    ### PRINT REMAINING BALANCE
+    pre = ""
+    if discretionary_spendings > 0 and surplus_deficit > 0:
+        pre = "\t\t      "
+        print(f"{Colors.UNDERLINE}{Colors.BOLD}Pre Discretionary Dispersment Remaining:{Colors.ENDC} ${pre_discretionary_remaining:,.2f}{Colors.ENDC}")
+        #print(f"\t>> {pred:.0f}% of Total Income")
+    if surplus_deficit > 0:
+        print(f"{pre}{Colors.UNDERLINE}{Colors.BOLD}Remaining Balance:{Colors.UNDERLINEOFF}{Colors.OKGREEN} ${surplus_deficit:,.2f}{Colors.ENDC}")
+        print("\n")
+    else:
+        print(f"{Colors.UNDERLINE}{Colors.BOLD}Over Budget:{Colors.FAIL}{Colors.UNDERLINEOFF} ${surplus_deficit:,.2f}{Colors.ENDC}")
+        #print(f"\t>> {psurplus_deficit:.0f}% of Total Income")
+        print("\n")
+    
+    ### PRINT CATEGORY TOTALS
+    print(f"{Colors.HEADER}=== Category Totals ==={Colors.ENDC}")
+    print("\n")
+    print(f"{Colors.UNDERLINE}Strict Fixed aka Bills:{Colors.SPENT}{Colors.BOLD} ${strict_fixed:,.2f}{Colors.ENDC}")
+    if args.strict_fixed_dict:
+        for expense_name, expense_value in strict_fixed_dict.items():
+            print(f"\t> {expense_name}: {Colors.SPENT}${expense_value:,.2f}{Colors.ENDC}")
+    print(f"{Colors.UNDERLINE}Strict Variable Spendings:{Colors.SPENT}{Colors.BOLD} ${soft_fixed:,.2f}{Colors.ENDC}")
+    # Print only the 'strict_variable' section
+    income_tier.print_section('strict_variable')
+    print(f"{Colors.UNDERLINE}Discretionary Spendings: {Colors.SPENT}{Colors.BOLD}${discretionary_spendings:,.2f}{Colors.ENDC}")
+    # Print only the 'discretionary_spendings' section
+    income_tier.print_section('discretionary_spendings')
+    print(f"{Colors.UNDERLINE}Discretionary Savings: {Colors.SPENT}{Colors.BOLD}${discretionary_savings:,.2f}{Colors.ENDC}")
+    # Print only the 'discretionary_savings' section
+    income_tier.print_section('discretionary_savings')
+    print("\n")
+    
+# END OF CATEGORY TOTALS PRINT DEF
+#########################################################################
+# START AND END MONTH PLANNING
+
+# months = 3  # Number of months to loop through
+
+# # Initial balances AUGUST
+# aug_m_income = 2301.93
+# aug_a_income = 450.92
+# aug_income = aug_a_income + aug_m_income + wgu_supplement
+
+# iccu_balance_aug31 = 4575.90
+# apple_balance_aug31 = 2409.82
+# iccu_sept_balance_after_aug_apple_paid = iccu_balance_aug31 - apple_balance_aug31
+
+# # Print statements for Aug-Sept
+# print(f"Month August:")
+# print(f"ICCU Balance after Megan receives paycheck: ${iccu_before_pay:,.2f}")
+# print(f"Apple Card Balance at the start of the month: ${apple_start:,.2f}")
+# print(f"Month September:")
+# print(f"ICCU Balance after WGU Supplement: ${iccu_plus_wgu:,.2f}")
+# print(f"ICCU Balance after paying off the Apple Card: ${iccu_when_apple_is_paid:,.2f}")
+# print(f"ICCU Balance as the month approaches end and Aaron gets paid for all jobs: ${iccu_next:,.2f}")
+# print("-" * 50)
+
+# # Initial balances SEPTEMBER
+# iccu_clean_start_sept = iccu_sept_balance_after_aug_apple_paid
+# sept_m_income = 2203.79
+# sept_a_income = 822.76
+# sept_income = sept_m_income + sept_a_income + wgu_supplement
+
+# # estimates to round off the month
+# more_restaurants = 70
+# more_groceries = 80
+
+# iccu_sept26_balance = 5208
+# apple_sept26_balance = 1046.84
+
+# #Print Statement for Sept-Oct
+# print(f"Month September:")
+# print(f"ICCU Balance after Megan receives paycheck: ${iccu_before_pay:,.2f}")
+# print(f"Apple Card Balance at the start of the month: ${apple_start:,.2f}")
+# print(f"Month October:")
+# print(f"ICCU Balance after WGU Supplement: ${iccu_plus_wgu:,.2f}")
+# print(f"ICCU Balance after paying off the Apple Card: ${iccu_when_apple_is_paid:,.2f}")
+# print(f"ICCU Balance as the month approaches end and Aaron gets paid for all jobs: ${iccu_next:,.2f}")
+# print("-" * 50)
+
+# iccu_balance_sept31 = iccu_sept26_balance - more_groceries
+# apple_balance_sept31 = apple_sept26_balance + restaurants
+# iccu_oct_balance_after_sept_apple_paid = iccu_balance_sept31 - apple_balance_sept31
+
+# # Initial Values
+# # wgu_supplement = 397
+# oct5_dj = 500 # I have a one off source of income on october 5th
+# aaron_hypo_income = 808
+# megan_hypo_income = 2100
+# iccu_after_m_income = iccu_balance_sept31
+# apple_card_start = apple_balance_sept31
+# iccu_balance_after_apple_paid = iccu_oct_balance_after_sept_apple_paid
+# iccu_after_wgu_recieved = iccu_balance_after_apple_paid + wgu_supplement
+# iccu_balance_end
+# apple_balance_end
+
+
+
+# # Loop through the number of months
+# for month in range(months):
+#     iccu_before_pay = iccu_balance - apple_card_balance
+#     iccu_plus_wgu = iccu_balance + wgu_supplement
+#     iccu_when_apple_is_paid = iccu_plus_wgu - apple_card_balance
+#     month_expenses_not_rent = total_budget - rent 
+#     iccu_next = iccu_when_apple_is_paid + aaron_hypo_income
+#     apple_next = month_expenses_not_rent
+#     apple_card_balance = apple_next + rent  # Update for next month
+
+#     # Print statements with formatting
+#     print(f"Month {month}:")
+#     print(f"ICCU Balance after Megan receives paycheck: ${iccu_before_pay:,.2f}")
+#     print(f"Apple Card Balance at the start of the month: ${apple_start:,.2f}")
+#     print(f"Month {month + 1}:")
+#     print(f"ICCU Balance after WGU Supplement: ${iccu_plus_wgu:,.2f}")
+#     print(f"ICCU Balance after paying off the Apple Card: ${iccu_when_apple_is_paid:,.2f}")
+#     print(f"ICCU Balance as the month approaches end and Aaron gets paid for all jobs: ${iccu_next:,.2f}")
+#     print(f"Apple Card Balance before the start of next month: ${apple_next:,.2f}")
+#     print("-" * 50)
+
+#     # Update ICCU balance for the next month
+#     iccu_balance = iccu_next
+
+#########################################################################
+
+### PRINT BASED ON ARG PROVIDED
+
+if args.overview:
+    print_jobs_scheduled()
+    print_overview()
+elif args.jobs:
+    print_jobs_scheduled()
+    print_cashflow()
+elif args.flex or args.flex_all or args.if_flex:
+    print_jobs_scheduled()
+    print_cashflow()
+else:
+    print_cashflow()  # Default behavior if no arguments are provided
