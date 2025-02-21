@@ -1,43 +1,46 @@
 #!/bin/zsh
 
 arg1=$1
+arg2=$2
+scripts_pwd=$HOME/Projects/terminal_scripts
 
-if [[ "$arg1" = "comarc" || "$arg1" = "c" ]]; then
-    echo $PATH_PLAY
-    open -a Xcode "$PATH_PLAY"
-elif [[ "$arg1" = "budget" || "$arg1" = "b" ]]; then
-    echo $PATH_BUDGET
-    code "$PATH_BUDGET"
-elif [[ "$arg1" = "calaws" || "$arg1" = "aws" ]]; then
-    echo $PATH_CALAWS
-    open -a Xcode "$PATH_CALAWS"
-elif [[ "$arg1" = "calawsz" || "$arg1" = "z" ]]; then
-    echo $PATH_CALAWSZ
-    open -a Xcode "$PATH_CALAWSZ"
-elif [[ "$arg1" = "upcal" || "$arg1" = "u" ]]; then
-    echo $PATH_UPCAL
-    open -a Xcode "$PATH_UPCAL"
-elif [[ "$arg1" = "opn" || "$arg1" = "o" ]]; then
-    echo $PATH_OPN
-    open -a Xcode "$PATH_OPN"
-elif [[ "$arg1" = "ec2" || "$arg1" = "e" ]]; then
-    echo $PATH_EC2
-    open -a Xcode "$PATH_EC2"
-elif [[ "$arg1" = "treecat" || "$arg1" = "tc" ]]; then
-    echo $PATH_TREECAT
-    open -a Xcode "$PATH_TREECAT"
-elif [[ "$arg1" = "-h" ]]; then
+if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
     echo
-    echo "opn options include:"
-    echo '\taws calaws'
-    echo '\tz calawsz'
-    echo '\tc comarc'
-    echo '\tb budget'
-    echo '\tu upcal'
-    echo '\to opn'
-    echo '\te ec2'
-    echo '\ttc treecat'
+    echo "[Info] For shortcutting creating new scripts:"
+    echo "opn [(-n) or (new)] [<name of new script>]"
+    echo
+    echo "Turn newly created scripts into executables:"
+    echo "opn chmod [<name of script>]"
+    echo
+    echo "Available Scripts:"
+    ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
+    echo
+elif [[ "$arg1" = "-n" || "$arg1" = "new" ]]; then
+    echo
+    echo "[Info] Creating a new script for "$arg2...
+    code $scripts_pwd/$arg2
+elif [[ "$arg1" = "chmod" ]]; then
+    if [[ -f "$arg2" ]]; then 
+        echo
+        echo "[Info] Turning '$arg2' into an executable file..."
+        chmod +x "$scripts_pwd/$arg2"
+        if [[ $? -eq 0 ]]; then 
+          echo "Successfully made '$arg2' executable."
+        else
+          echo "[Error] Failed to make '$arg2' executable."
+        fi
+    else
+        echo "[Error] '$arg2' is not a file."
+    fi
+    echo
+elif [[ ! -e "$scripts_pwd/$arg1" ]]; then
+    echo
+    echo "[Error] Script not found:"$scripts_pwd/$arg1
+    echo
+    echo "Valid aruments include:"
+    ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
     echo
 else
-    echo "Unknown argument: $arg1"
+    echo $scripts_pwd/$arg1
+    code $scripts_pwd/$arg1
 fi
