@@ -5,10 +5,13 @@ arg2=$2
 week='/Users/aaronpotter/Projects/CS50/week'$1'_'$2
 
 echo
-echo 'Adding new week directory to project...'
-echo 
-tree $week
+echo '[INFO] Adding new week directory to project...'
 
 mkdir $week
 mkdir $week'/lecture'
 mkdir $week'/pset'$1
+
+echo
+echo '[INFO] Successfully created new week!'
+echo
+tree $week

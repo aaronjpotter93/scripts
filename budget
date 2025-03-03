@@ -145,22 +145,22 @@ def calculate_averages(blocks):
     )
 
 #September
-# lunes = Flex(63, 85, 3.96, 3.599, "Sep 9")
-# martes = Flex(72, 77, 2.79, 3.629, "Sep 10")
-# miercoles = Flex(63, 35.6, 1.02, 3.6, "Sep 11")
-# lunes2 = Flex(63, 68, 2.993, 3.589, "Sep 16")
-# martes2 = Flex(72, 57.7, 2.484, 3.589, "Sep 17")
-# lunes3 = Flex(64.28, 78.7, 2.659, 3.589, "Sep 23")
-# martes3 = Flex(72, 59.6, 2.193, 3.589, "Sep 24")
+lunes = Flex(63, 85, 3.96, 3.599, "Sep 9")
+martes = Flex(72, 77, 2.79, 3.629, "Sep 10")
+miercoles = Flex(63, 35.6, 1.02, 3.6, "Sep 11")
+lunes2 = Flex(63, 68, 2.993, 3.589, "Sep 16")
+martes2 = Flex(72, 57.7, 2.484, 3.589, "Sep 17")
+lunes3 = Flex(64.28, 78.7, 2.659, 3.589, "Sep 23")
+martes3 = Flex(72, 59.6, 2.193, 3.589, "Sep 24")
 
 #October
-jueves = Flex(54, 47.7, 1.9958, 3.519, "Oct 3")
-viernes = Flex(63, 44, 1.630, 3.519, "Oct 4")
-jueves2 = Flex(54, 54.6, 1.88, 3.489, "Oct 10")
+# jueves = Flex(54, 47.7, 1.9958, 3.519, "Oct 3")
+# viernes = Flex(63, 44, 1.630, 3.519, "Oct 4")
+# jueves2 = Flex(54, 54.6, 1.88, 3.489, "Oct 10")
 
 flex_blocks = []
-#flex_blocks = [lunes, martes, miercoles, lunes2, martes2, lunes3, martes3, lunes, lunes, lunes]
-flex_blocks = [jueves, viernes, jueves2]
+flex_blocks = [lunes, martes, miercoles, lunes2, martes2, lunes3, martes3, lunes, lunes, lunes]
+# flex_blocks = [jueves, viernes, jueves2]
 
 average_offers, average_miles, average_gallons, average_ppg = calculate_averages(flex_blocks)
 
