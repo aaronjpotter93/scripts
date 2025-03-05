@@ -1,0 +1,112 @@
+#!/bin/zsh
+
+# --- Improved Logging Function ---
+log_debug() {
+  [[ "$DEBUG_ENABLED" == "true" ]] && echo "DEBUG: $@" >&2
+}
+
+# --- Improved NPM Scanner ---
+scan_npm() {
+  local project_dir="$1"
+  local npm_dependencies_output=""
+  local found_dependencies=0
+
+  log_debug "NPM: Scanning $project_dir"
+  if [[ -f "$project_dir/package.json" ]]; then
+    log_debug "NPM: Found package.json"
+
+    # Handle dependencies
+    local dependencies=($(jq -r '.dependencies | keys[]?' "$project_dir/package.json" 2>/dev/null))
+    if (($#dependencies > 0)); then
+      npm_dependencies_output+="  - npm dependencies:\n"
+      for dep in $dependencies; do
+        npm_dependencies_output+="    - $dep\n"
+      done
+      found_dependencies=1
+    fi
+
+    # Handle devDependencies
+    local dev_dependencies=($(jq -r '.devDependencies | keys[]?' "$project_dir/package.json" 2>/dev/null))
+    if (($#dev_dependencies > 0)); then
+      npm_dependencies_output+="  - npm devDependencies:\n"
+      for dep in $dev_dependencies; do
+        npm_dependencies_output+="    - $dep\n"
+      done
+      found_dependencies=1
+    fi
+  fi
+
+  [[ $found_dependencies -eq 1 ]] && echo -n "$npm_dependencies_output"
+  return $((1 - found_dependencies)) # Invert for return code
+}
+
+# --- Fixed Maven Scanner ---
+scan_maven() {
+  local project_dir="$1"
+  local maven_dependencies_output=""
+  local found_dependencies=0
+
+  log_debug "Maven: Scanning $project_dir"
+  if [[ -f "$project_dir/pom.xml" ]]; then
+    log_debug "Maven: Found pom.xml"
+
+    # Use proper XML parsing with namespaces
+    local dependencies=($(xmllint --xpath '//*[local-name()="dependency"]/*[local-name()="groupId" or local-name()="artifactId"]/text()' "$project_dir/pom.xml" 2>/dev/null))
+
+    if (($#dependencies > 0)); then
+      maven_dependencies_output+="  - Maven dependencies:\n"
+      for i in {0..$(( ${#dependencies[@]} - 1 ))..2}; do # Corrected loop
+        local groupId=$dependencies[$i]
+        local artifactId=$dependencies[$((i+1))]
+        maven_dependencies_output+="    - $groupId:$artifactId\n"
+      done
+      found_dependencies=1
+    fi
+  fi
+
+  [[ $found_dependencies -eq 1 ]] && echo -n "$maven_dependencies_output"
+  return $((1 - found_dependencies)) # Invert for return code
+}
+
+# --- Improved Main Logic (Non-Recursive) ---
+main() {
+  local directory_path="$1"
+  log_debug "Main: Scanning $directory_path"
+
+  for project_dir in "$directory_path"/*/; do # Non-recursive loop
+    if [[ -d "$project_dir" ]]; then # Ensure it's a directory
+      local project_name=$(basename "$project_dir")
+      local output=""
+
+      log_debug "Processing: $project_dir"
+
+      # Single call to each scanner
+      local npm_output=$(scan_npm "$project_dir")
+      local maven_output=$(scan_maven "$project_dir")
+
+      if [[ -n "$npm_output" || -n "$maven_output" ]]; then
+        echo "Project: $project_name"
+        [[ -n "$npm_output" ]] && echo "$npm_output"
+        [[ -n "$maven_output" ]] && echo "$maven_output"
+        echo ""
+      fi
+    fi
+  done
+}
+
+# --- Execution ---
+DEBUG_ENABLED="false"
+
+# Argument parsing
+while getopts "d" opt; do
+  case $opt in
+    d) DEBUG_ENABLED="true" ;;
+    *) echo "Usage: $0 [-d] <directory>" >&2; exit 1 ;;
+  esac
+done
+shift $((OPTIND-1))
+
+[[ $# -ne 1 ]] && { echo "Usage: $0 [-d] <directory>" >&2; exit 1; }
+[[ ! -d "$1" ]] && { echo "Directory not found: $1" >&2; exit 1; }
+
+main "$1"
