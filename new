@@ -1,0 +1,34 @@
+#!/bin/zsh
+
+arg1=$1
+arg2=$2
+scripts_pwd=$HOME/.local/scripts
+
+if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
+    echo "\n[${INFO}INFO${RESET}] SUMMARY: For shortcutting creating new scripts:"
+    echo "\n\tUSAGE: new [<name of new script>]"
+    echo "\n[${INFO}INFO${RESET}] Turn newly created scripts into executables:"
+    echo "\n\tUSAGE: new chmod [<name of script>]"
+    echo
+elif [[ "$arg1" = "chmod" ]]; then
+    if [[ -f "$scripts_pwd/$arg2" ]]; then
+        echo "\n[${INFO}INFO${RESET}] Turning '$arg2' into an executable file..."
+        chmod +x "$scripts_pwd/$arg2"
+        if [[ $? -eq 0 ]]; then 
+          echo "\n[${INFO}INFO${RESET}] Successfully made '$arg2' executable."
+        else
+          echo "\n[${ERROR}ERROR${RESET}] Failed to make '$arg2' executable."
+        fi
+    else
+        echo "\n[${ERROR}ERROR${RESET}] '$arg2' is not a file."
+    fi
+    echo
+elif [[ "$arg1" = "cat" ]]; then
+    cat 
+else
+    echo "\n[${INFO}INFO${RESET}] Creating a new zsh script for "$arg1...
+    echo '#!/bin/zsh' > "$scripts_pwd/$arg1"
+    echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
+    code $scripts_pwd/$arg1
+    echo
+fi

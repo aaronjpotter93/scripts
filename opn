@@ -2,42 +2,106 @@
 
 arg1=$1
 arg2=$2
+arg3=$3
 scripts_pwd=$HOME/.local/scripts
+dev_pwd=$HOME/.local/dev
 
 if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
-    echo "\n[${INFO}INFO${RESET}] For shortcutting creating new scripts:"
-    echo "\n\topn [(-n) or (new)] [<name of new script>]"
-    echo "\n[${INFO}INFO${RESET}] Turn newly created scripts into executables:"
-    echo "\n\topn chmod [<name of script>]"
+    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+    echo "\n\tfunctionality has moved to a a script called 'new'"
     echo "\n[${INFO}INFO${RESET}] Available Scripts:"
     ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
     echo
-elif [[ "$arg1" = "-n" || "$arg1" = "new" ]]; then
-    echo "\n[${INFO}INFO${RESET}] Creating a new zsh script for "$arg2...
-    echo '#!/bin/zsh' > "$scripts_pwd/$arg2"
-    code $scripts_pwd/$arg2
-elif [[ "$arg1" = "chmod" ]]; then
-    if [[ -f "$scripts_pwd/$arg2" ]]; then
-        echo "\n[${INFO}INFO${RESET}] Turning '$arg2' into an executable file..."
-        chmod +x "$scripts_pwd/$arg2"
-        if [[ $? -eq 0 ]]; then 
-          echo "\n[${INFO}INFO${RESET}] Successfully made '$arg2' executable."
-        else
-          echo "\n[${ERROR}ERROR${RESET}] Failed to make '$arg2' executable."
-        fi
-    else
-        echo "\n[${ERROR}ERROR${RESET}] '$arg2' is not a file."
-    fi
+elif [[ "$arg1" = "-n" ]]; then
+    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+    echo "\n\tfunctionality has moved to a a script called 'new'"
+    echo
+elif [[ "$arg1" = "new" ]]; then
+    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+    echo "\n\tfunctionality has moved to a a script called 'new'"
+    echo
+    echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
+    code $scripts_pwd/$arg1
     echo
 elif [[ "$arg1" = "cat" ]]; then
-    cat 
+    target_dir=$scripts_pwd  # Default to scripts
+    if [[ "$arg2" = "dev" ]]; then
+        target_dir=$dev_pwd
+    elif [[ "$arg2" = "runs" ]]; then
+        target_dir=$dev_pwd/runs
+    elif [[ "$arg2" = "scripts" ]]; then
+        target_dir=$scripts_pwd
+    fi
+    cd $target_dir
+    bat
+elif [[ "$arg1" = "ls" ]]; then
+    target_dir=$scripts_pwd  # Default to scripts
+    if [[ "$arg2" = "dev" ]]; then
+        target_dir=$dev_pwd
+    elif [[ "$arg2" = "runs" ]]; then
+        target_dir=$dev_pwd/runs
+    elif [[ "$arg2" = "scripts" ]]; then
+        target_dir=$scripts_pwd
+    fi
+    cd $target_dir
+    eza
+elif [[ "$arg1" = "ll" ]]; then
+    target_dir=$scripts_pwd  # Default to scripts
+    if [[ "$arg2" = "dev" ]]; then
+        target_dir=$dev_pwd
+    elif [[ "$arg2" = "runs" ]]; then
+        target_dir=$dev_pwd/runs
+    elif [[ "$arg2" = "scripts" ]]; then
+        target_dir=$scripts_pwd
+    fi
+    cd $target_dir
+    eza -lh
+elif [[ "$arg1" = "tree" ]]; then
+    target_dir=$scripts_pwd  # Default to scripts
+    depth=1  # Default depth
+    # Check if $arg2 is a directory or depth
+    if [[ "$arg2" = "dev" || "$arg2" = "runs" || "$arg2" = "scripts" ]]; then
+        case "$arg2" in
+            dev) target_dir=$dev_pwd ;;
+            runs) target_dir=$dev_pwd/runs ;;
+            scripts) target_dir=$scripts_pwd ;;
+        esac
+        # Use $arg3 for depth if it's a number
+        if [[ "$arg3" =~ ^[0-9]+$ ]]; then
+            depth=$arg3
+        fi
+    elif [[ "$arg2" =~ ^[0-9]+$ ]]; then
+        depth=$arg2  # Use $arg2 as depth for scripts
+    fi
+    cd $target_dir
+    eza -T -L $depth
+elif [[ -e "$scripts_pwd/$arg1" ]]; then\
+    echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
+    code $scripts_pwd/$arg1
+    echo
+elif [[ -e "$dev_pwd/$arg1" ]]; then\
+    echo "\n[${INFO}INFO${RESET}] Opening: " $dev_pwd/$arg1
+    code $dev_pwd/$arg1
+    echo
+elif [[ -e "$dev_pwd/runs/$arg1" ]]; then\
+    echo "\n[${INFO}INFO${RESET}] Opening: " $dev_pwd/runs/$arg1
+    code $scripts_pwd/$arg1
+    echo
 elif [[ ! -e "$scripts_pwd/$arg1" ]]; then\
-    echo "\n[${ERROR}ERROR${RESET}] Script not found:"$scripts_pwd/$arg1
+    echo "\n[${WARN}WARN${RESET}] Script not found in: "$scripts_pwd/$arg1
+    echo
+    echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_pwd/
+    echo
+elif [[ ! -e "$dev_pwd/$arg1" ]]; then\
+    echo "\n[${WARN}WARN${RESET}] Script not found in: "$dev_pwd/$arg1
+    echo
+    echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_pwd/runs
+    echo
+elif [[ ! -e "$dev_pwd/runs/$arg1" ]]; then\
+    echo "\n[${ERROR}ERROR${RESET}] Script not found in: "$dev_pwd/runs/$arg1
     echo
     echo "\n[${INFO}INFO${RESET}] Valid aruments include:"
+    echo "\n[cat] [ls] [ll] [tree]\n"
     ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
     echo
-else
-    echo $scripts_pwd/$arg1
-    code $scripts_pwd/$arg1
 fi

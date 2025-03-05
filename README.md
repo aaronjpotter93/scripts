@@ -1,48 +1,78 @@
 # My Personal Helper Terminal Scripts
 
-### TO DO: 
-- [ ] Add Summaries for New Scripts:
-```
-.
-├── cleanup
-├── figme
-├── obsidian
-├── pkmg
-├── restore
-├── scrape
-└── week50
-```
+[//]: # (Tree with anchor links - use HTML to preserve formatting)
+<pre class="highlight"><code>.
+├── <a href="#budget">budget</a>
+├── <a href="#cleanup">cleanup</a>
+├── <a href="#ec2">ec2</a>
+├── <a href="#figme">figme</a>
+├── <a href="#inv">inv</a>
+├── <a href="#obsidian">obsidian</a>
+├── <a href="#opn">opn</a>
+├── <a href="#pkgs">pkgs</a>
+├── <a href="#restore">restore</a>
+├── <a href="#scrape">scrape</a>
+├── <a href="#treebat">treebat</a>
+└── <a href="#week50">week50</a>
 
-- [ ] Create Scripts for:
-```
-.
-├── new
-├── run (maybe run runs should be added here from ~/Documents/env-profiles/dev  ?)
-```
+# </span><a href="#todo">TO DO:</a>
+---
+<a href="#cleanup">cleanup</a>
+<a href="#todo-ec2">ec2</a>
+<a href="#restore">restore</a>
+<a href="#todo-treebat">treebat</a>
+---
 
-### ec2
+</code></pre>
 
-> Summary: Automates SSH access to AWS EC2 instances by storing key paths and instance details, eliminating the need to manually enter them each time.
+### Script Descriptions
 
-> TO DO: Make more secure. Involve age and sops
+#### budget
+> Generates budget scenarios with income/savings projections and expense tracking for financial planning.
 
-### opn
+#### cleanup
+> Automated system maintenance script that removes temporary files and optimizes storage.
 
-> Simplifies opening scripts in Visual Studio Code by allowing you to provide just the script name, reducing the need to type full paths.
+#### ec2
+> Simplifies AWS EC2 instance access with stored SSH configurations for quick server connections.
 
-> TO DO: maybe split the functionality of opn's create new scripts options to a new program because it feels weird to use opn to create new scripts when opn is just meant to speed up editing the scripts that have already been created, maybe make a new program called new that adds scripts to the path and collection as well as makes them executable. Also new should add a summary of the script to the readme (maybe run an api call on an llm to sumarize the script for you)
+#### figme
+> Displays personalized ASCII art header using jp2a and Figlet for terminal customization.
 
-### treebat
+#### inv
+> System inventory auditor tracking installed packages across Homebrew, Node.js, Python, and Go environments.
 
-> Summary: Merges the functionality of the `tree` and `bat` commands, useful for exploring directory structures and viewing file contents simultaneously.
+#### obsidian
+> Obsidian vault manager automating markdown template generation with academic metadata.
 
-> TO DO: Need to add a check before calling bat in the case that its a very large file (maybe limit to a certain number of lines to print) or a file type that wouln't be human readable, or to not recursively dive into library directories. 
+#### opn
+> Script workspace manager with VS Code integration and permission handling utilities.
 
-### budget
+#### pkgs
+> Dependency scanner that analyzes project package manifests (npm, Maven) for installed components.
 
-> Generates a budget based on income and savings priorities, helping to plan spending scenarios over a year for financial sustainability.
+#### restore
+> System restoration utility for recovering configurations and important files from backups.
 
-<!-- ## 🔄 Restoration
+#### scrape
+> Web scraping tool for batch downloading PDF resources from educational websites.
 
-This project uses the standard cleanup process. To restore dependencies: -->
+#### treebat
+> Enhanced directory visualizer with syntax highlighting and gitignore-aware filtering.
 
+#### week50
+> CS50 course helper that automates project directory structure for weekly assignments.
+
+### <span id="todo"></span>TO DO:
+
+#### <span id="cleanup"></span><a href="#cleanup">cleanup</a>
+- [ ] Make a script to run for all projects accross IdeaProjects, Projects, and whatever else. will make use of <a href="#inv">inv</a> and <a href="#pkgs">pkgs</a> to discover and bulk remove all large files (specificaly libraries) that could easily be added back later with their package manager, as well as create a cleaned.md file that details what it removed and how to get it back so that the restore script can do its job later
+
+#### <span id="todo-ec2"></span><a href="#ec2">ec2</a>
+- [ ] Make more secure. Involve age and sops
+
+#### <span id="restore"></span><a href="#restore">restore</a>
+- [ ] Make a script that parses information from a cleaned.md file in the current project directory to determin and execute the proper steps in getting the project back up and running
+
+#### <span id="todo-treebat"></span><a href="#treebat">treebat</a>
+- [ ] Add large file safety checks, improve .gitignore handling
