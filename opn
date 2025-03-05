@@ -2,7 +2,7 @@
 
 arg1=$1
 arg2=$2
-scripts_pwd=$HOME/Projects/terminal_scripts
+scripts_pwd=$HOME/.local/scripts
 
 if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
     echo "\n[${INFO}INFO${RESET}] For shortcutting creating new scripts:"
