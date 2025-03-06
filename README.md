@@ -32,7 +32,7 @@
 > Generates budget scenarios with income/savings projections and expense tracking for financial planning.
 
 #### clean
-> Automated system maintenance script that removes temporary files and optimizes storage.
+> Automated system maintenance script that removes large files and libraries to optimize storage.
 
 #### ec2
 > Simplifies AWS EC2 instance access with stored SSH configurations for quick server connections.

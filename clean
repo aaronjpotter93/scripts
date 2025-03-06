@@ -1,1 +1,36 @@
 #!/bin/zsh
+# Master cleanup script
+
+# clean_maven() {}
+
+# clean_npm() {}
+
+# clean_docker() {}
+
+# clean_xcode() {}
+
+clean_project() {
+  # Use refactored pkgs
+  # Check to see if there is already a clean-me.md
+  # If there is - compare the last modifed of the clean-me.md with all other content in current directory (not recursivley, just sibling content). If the clean-me.md is not up to date run pkgs --report . again
+  pkgs --report .
+  # call on appropriate functions to perform deletions depending on the contents of the clean-me.md
+}
+
+clean_global() {
+#   echo "Clearing global caches..."
+#   [[ -d ~/.m2/repository ]] && rm -rf ~/.m2/repository/*
+
+
+#   [[ -d ~/.npm ]] && rm -rf ~/.npm/*
+#   npm cache clean --force
+
+
+#   echo "Cleaning Docker..."
+#   docker system prune -af
+
+
+#   echo "Cleaning Xcode..."
+#   rm -rf ~/Library/Developer/Xcode/DerivedData/*
+
+}

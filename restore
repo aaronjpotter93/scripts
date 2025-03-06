@@ -1,1 +1,10 @@
 #!/bin/zsh
+# Project restoration utility
+
+# runs on current directory and reads in the restore-me.md left by the refactored pkgs program to load in instructions to restore and automaticaly execute. 
+
+RESTORE_FILE="restore-me.md"
+
+restore_project() {
+    # load in project specific instructions and begin executing them
+}

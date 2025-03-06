@@ -1,5 +1,8 @@
 #!/bin/zsh
 
+  # refactor pkgs to either just output the results or to also generate md's for being followed up with clean and later restore if desired.
+  # when --report gets passed to command: generate files called clean-me.md and another called restore-me.md. one for each of the commands that may follow up
+
 # --- Improved Logging Function ---
 log_debug() {
   [[ "$DEBUG_ENABLED" == "true" ]] && echo "DEBUG: $@" >&2
