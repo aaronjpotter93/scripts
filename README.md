@@ -6,6 +6,7 @@
 ├── <a href="#clean">clean</a>
 ├── <a href="#ec2">ec2</a>
 ├── <a href="#figme">figme</a>
+├── <a href="#gitgo">gitgo</a>
 ├── <a href="#inv">inv</a>
 ├── <a href="#obsidian">obsidian</a>
 ├── <a href="#opn">opn</a>
@@ -38,6 +39,9 @@
 
 #### figme
 > Displays personalized ASCII art header using jp2a and Figlet for terminal customization.
+
+#### gitgo
+> Automates git add . commit and push for a couple high traffic projects
 
 #### inv
 > System inventory auditor tracking installed packages across Homebrew, Node.js, Python, and Go environments.
