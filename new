@@ -23,8 +23,11 @@ elif [[ "$arg1" = "chmod" ]]; then
         echo "\n[${ERROR}ERROR${RESET}] '$arg2' is not a file."
     fi
     echo
-elif [[ "$arg1" = "cat" ]]; then
-    cat 
+elif [[ -e "$scripts_pwd/$arg1" ]]; then\
+    echo "\n[${WARN}WARN${RESET}] Script: '$arg1' already exists"
+    echo "\n[${INFO}INFO${RESET}] All Scripts:"
+    ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
+    echo
 else
     echo "\n[${INFO}INFO${RESET}] Creating a new zsh script for "$arg1...
     echo '#!/bin/zsh' > "$scripts_pwd/$arg1"

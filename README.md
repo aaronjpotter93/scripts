@@ -3,7 +3,7 @@
 [//]: # (Tree with anchor links - use HTML to preserve formatting)
 <pre class="highlight"><code>.
 ├── <a href="#budget">budget</a>
-├── <a href="#cleanup">cleanup</a>
+├── <a href="#clean">clean</a>
 ├── <a href="#ec2">ec2</a>
 ├── <a href="#figme">figme</a>
 ├── <a href="#inv">inv</a>
@@ -17,7 +17,7 @@
 
 # </span><a href="#todo">TO DO:</a>
 ---
-<a href="#cleanup">cleanup</a>
+<a href="#clean">clean</a>
 <a href="#todo-ec2">ec2</a>
 <a href="#restore">restore</a>
 <a href="#todo-treebat">treebat</a>
@@ -30,7 +30,7 @@
 #### budget
 > Generates budget scenarios with income/savings projections and expense tracking for financial planning.
 
-#### cleanup
+#### clean
 > Automated system maintenance script that removes temporary files and optimizes storage.
 
 #### ec2
@@ -65,7 +65,7 @@
 
 ### <span id="todo"></span>TO DO:
 
-#### <span id="cleanup"></span><a href="#cleanup">cleanup</a>
+#### <span id="clean"></span><a href="#clean">clean</a>
 - [ ] Make a script to run for all projects accross IdeaProjects, Projects, and whatever else. will make use of <a href="#inv">inv</a> and <a href="#pkgs">pkgs</a> to discover and bulk remove all large files (specificaly libraries) that could easily be added back later with their package manager, as well as create a cleaned.md file that details what it removed and how to get it back so that the restore script can do its job later
 
 #### <span id="todo-ec2"></span><a href="#ec2">ec2</a>

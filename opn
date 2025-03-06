@@ -23,58 +23,6 @@ elif [[ "$arg1" = "new" ]]; then
     echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
     code $scripts_pwd/$arg1
     echo
-elif [[ "$arg1" = "cat" ]]; then
-    target_dir=$scripts_pwd  # Default to scripts
-    if [[ "$arg2" = "dev" ]]; then
-        target_dir=$dev_pwd
-    elif [[ "$arg2" = "runs" ]]; then
-        target_dir=$dev_pwd/runs
-    elif [[ "$arg2" = "scripts" ]]; then
-        target_dir=$scripts_pwd
-    fi
-    cd $target_dir
-    bat
-elif [[ "$arg1" = "ls" ]]; then
-    target_dir=$scripts_pwd  # Default to scripts
-    if [[ "$arg2" = "dev" ]]; then
-        target_dir=$dev_pwd
-    elif [[ "$arg2" = "runs" ]]; then
-        target_dir=$dev_pwd/runs
-    elif [[ "$arg2" = "scripts" ]]; then
-        target_dir=$scripts_pwd
-    fi
-    cd $target_dir
-    eza
-elif [[ "$arg1" = "ll" ]]; then
-    target_dir=$scripts_pwd  # Default to scripts
-    if [[ "$arg2" = "dev" ]]; then
-        target_dir=$dev_pwd
-    elif [[ "$arg2" = "runs" ]]; then
-        target_dir=$dev_pwd/runs
-    elif [[ "$arg2" = "scripts" ]]; then
-        target_dir=$scripts_pwd
-    fi
-    cd $target_dir
-    eza -lh
-elif [[ "$arg1" = "tree" ]]; then
-    target_dir=$scripts_pwd  # Default to scripts
-    depth=1  # Default depth
-    # Check if $arg2 is a directory or depth
-    if [[ "$arg2" = "dev" || "$arg2" = "runs" || "$arg2" = "scripts" ]]; then
-        case "$arg2" in
-            dev) target_dir=$dev_pwd ;;
-            runs) target_dir=$dev_pwd/runs ;;
-            scripts) target_dir=$scripts_pwd ;;
-        esac
-        # Use $arg3 for depth if it's a number
-        if [[ "$arg3" =~ ^[0-9]+$ ]]; then
-            depth=$arg3
-        fi
-    elif [[ "$arg2" =~ ^[0-9]+$ ]]; then
-        depth=$arg2  # Use $arg2 as depth for scripts
-    fi
-    cd $target_dir
-    eza -T -L $depth
 elif [[ -e "$scripts_pwd/$arg1" ]]; then\
     echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
     code $scripts_pwd/$arg1

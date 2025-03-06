@@ -1,0 +1,23 @@
+#!/bin/zsh
+
+# Define your array of paths
+dirs=(
+  ~/.local/scripts
+  ~/.local/dev
+  ~/.local/devr/runs
+  ~/Documents/Obsidian\ Vaults/Brain
+)
+
+# Iterate over each directory
+for dir in ${dirs[@]}; do
+  if [[ -d "$dir" ]]; then
+    pushd -q "$dir" || continue
+    echo "Processing: $dir"
+    git add .
+    git commit -m 'automated commit'
+    git push
+    popd -q
+  else
+    echo "Directory not found: $dir"
+  fi
+done
