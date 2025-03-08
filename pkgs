@@ -1,100 +1,96 @@
 #!/bin/zsh
 
-  # refactor pkgs to either just output the results or to also generate md's for being followed up with clean and later restore if desired.
-  # when --report gets passed to command: generate files called clean-me.md and another called restore-me.md. one for each of the commands that may follow up
+# --- Config ---
+CLEAN_FILE="clean-me.md"
+RESTORE_FILE="restore-me.md"
+DEBUG_ENABLED="false"
 
-# --- Improved Logging Function ---
+# --- Logging ---
 log_debug() {
   [[ "$DEBUG_ENABLED" == "true" ]] && echo "DEBUG: $@" >&2
 }
 
-# --- Improved NPM Scanner ---
-scan_npm() {
+# --- Directory Cleaners ---
+track_npm_cleanup() {
   local project_dir="$1"
-  local npm_dependencies_output=""
-  local found_dependencies=0
+  local entries=()
+  
+  # Check for deletable directories relative to project root
+  [[ -d "$project_dir/node_modules" ]] && entries+=("node_modules")
+  [[ -d "$project_dir/dist" ]] && entries+=("dist")
+  [[ -d "$project_dir/.angular/cache" ]] && entries+=(".angular/cache")
+  [[ -d "$project_dir/coverage" ]] && entries+=("coverage")
 
-  log_debug "NPM: Scanning $project_dir"
-  if [[ -f "$project_dir/package.json" ]]; then
-    log_debug "NPM: Found package.json"
-
-    # Handle dependencies
-    local dependencies=($(jq -r '.dependencies | keys[]?' "$project_dir/package.json" 2>/dev/null))
-    if (($#dependencies > 0)); then
-      npm_dependencies_output+="  - npm dependencies:\n"
-      for dep in $dependencies; do
-        npm_dependencies_output+="    - $dep\n"
+  if (($#entries > 0)); then
+    {
+      echo "### NPM Project: $(basename $project_dir)"
+      echo '```bash'
+      # Use relative paths (executed from project root)
+      for entry in "${entries[@]}"; do
+        echo "rm -rf '$entry'"
       done
-      found_dependencies=1
-    fi
+      echo '```\n'
+    } >> $CLEAN_FILE
 
-    # Handle devDependencies
-    local dev_dependencies=($(jq -r '.devDependencies | keys[]?' "$project_dir/package.json" 2>/dev/null))
-    if (($#dev_dependencies > 0)); then
-      npm_dependencies_output+="  - npm devDependencies:\n"
-      for dep in $dev_dependencies; do
-        npm_dependencies_output+="    - $dep\n"
-      done
-      found_dependencies=1
-    fi
+    {
+      echo "### NPM Project: $(basename $project_dir)"
+      echo '```bash'
+      echo "cd '$project_dir' && npm install"
+      echo '```\n'
+    } >> $RESTORE_FILE
   fi
-
-  [[ $found_dependencies -eq 1 ]] && echo -n "$npm_dependencies_output"
-  return $((1 - found_dependencies)) # Invert for return code
 }
 
-# --- Fixed Maven Scanner ---
-scan_maven() {
+track_maven_cleanup() {
   local project_dir="$1"
-  local maven_dependencies_output=""
-  local found_dependencies=0
+  
+  # Check for target directory AND pom.xml to confirm it's a Maven project
+  if [[ -d "$project_dir/target" && -f "$project_dir/pom.xml" ]]; then
+    {
+      echo "### Maven Project: $(basename $project_dir)"
+      echo '```bash'
+      echo "cd '$project_dir' && mvn clean" 
+      echo '```\n'
+    } >> $CLEAN_FILE
 
-  log_debug "Maven: Scanning $project_dir"
-  if [[ -f "$project_dir/pom.xml" ]]; then
-    log_debug "Maven: Found pom.xml"
-
-    # Use proper XML parsing with namespaces
-    local dependencies=($(xmllint --xpath '//*[local-name()="dependency"]/*[local-name()="groupId" or local-name()="artifactId"]/text()' "$project_dir/pom.xml" 2>/dev/null))
-
-    if (($#dependencies > 0)); then
-      maven_dependencies_output+="  - Maven dependencies:\n"
-      for i in {0..$(( ${#dependencies[@]} - 1 ))..2}; do # Corrected loop
-        local groupId=$dependencies[$i]
-        local artifactId=$dependencies[$((i+1))]
-        maven_dependencies_output+="    - $groupId:$artifactId\n"
-      done
-      found_dependencies=1
-    fi
+    {
+      echo "### Maven Project: $(basename $project_dir)"
+      echo '```bash'
+      echo "cd '$project_dir' && mvn clean install"
+      echo '```\n'
+    } >> $RESTORE_FILE
   fi
-
-  [[ $found_dependencies -eq 1 ]] && echo -n "$maven_dependencies_output"
-  return $((1 - found_dependencies)) # Invert for return code
 }
 
-# --- Improved Main Logic (Non-Recursive) ---
+# --- Scanners ---
+scan_project() {
+  local project_dir="$1"
+  
+  # Always process the directory itself first
+  [[ -f "$project_dir/package.json" ]] && track_npm_cleanup "$project_dir"
+  [[ -f "$project_dir/pom.xml" ]] && track_maven_cleanup "$project_dir"
+
+  # Then process its subdirectories
+  find "$project_dir" -maxdepth 1 -mindepth 1 -type d | while read sub_dir; do
+    [[ -f "$sub_dir/package.json" ]] && track_npm_cleanup "$sub_dir"
+    [[ -f "$sub_dir/pom.xml" ]] && track_maven_cleanup "$sub_dir"
+  done
+}
+
+# --- Main Logic ---
 main() {
   local directory_path="$1"
-  log_debug "Main: Scanning $directory_path"
+  
+  # Init report files
+  echo "# Cleanup Commands\n" > $CLEAN_FILE
+  echo "# Restore Commands\n" > $RESTORE_FILE
 
-  for project_dir in "$directory_path"/*/; do # Non-recursive loop
-    if [[ -d "$project_dir" ]]; then # Ensure it's a directory
-      local project_name=$(basename "$project_dir")
-      local output=""
+  # Process both the root directory and its immediate children
+  scan_project "$directory_path"
 
-      log_debug "Processing: $project_dir"
-
-      # Single call to each scanner
-      local npm_output=$(scan_npm "$project_dir")
-      local maven_output=$(scan_maven "$project_dir")
-
-      if [[ -n "$npm_output" || -n "$maven_output" ]]; then
-        echo "Project: $project_name"
-        [[ -n "$npm_output" ]] && echo "$npm_output"
-        [[ -n "$maven_output" ]] && echo "$maven_output"
-        echo ""
-      fi
-    fi
-  done
+  echo "Generated:"
+  echo "- $CLEAN_FILE"
+  echo "- $RESTORE_FILE"
 }
 
 # --- Execution ---
