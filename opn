@@ -1,55 +1,57 @@
 #!/bin/zsh
 
-arg1=$1
-arg2=$2
-arg3=$3
-scripts_pwd=$HOME/.local/scripts
-dev_pwd=$HOME/.local/dev
+echo "Sorry I can't, I'm just a baby"
 
-if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
-    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
-    echo "\n\tfunctionality has moved to a a script called 'new'"
-    echo "\n[${INFO}INFO${RESET}] Available Scripts:"
-    ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
-    echo
-elif [[ "$arg1" = "-n" ]]; then
-    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
-    echo "\n\tfunctionality has moved to a a script called 'new'"
-    echo
-elif [[ "$arg1" = "new" ]]; then
-    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
-    echo "\n\tfunctionality has moved to a a script called 'new'"
-    echo
-    echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
-    code $scripts_pwd/$arg1
-    echo
-elif [[ -e "$scripts_pwd/$arg1" ]]; then\
-    echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
-    code $scripts_pwd/$arg1
-    echo
-elif [[ -e "$dev_pwd/$arg1" ]]; then\
-    echo "\n[${INFO}INFO${RESET}] Opening: " $dev_pwd/$arg1
-    code $dev_pwd/$arg1
-    echo
-elif [[ -e "$dev_pwd/runs/$arg1" ]]; then\
-    echo "\n[${INFO}INFO${RESET}] Opening: " $dev_pwd/runs/$arg1
-    code $scripts_pwd/$arg1
-    echo
-elif [[ ! -e "$scripts_pwd/$arg1" ]]; then\
-    echo "\n[${WARN}WARN${RESET}] Script not found in: "$scripts_pwd/$arg1
-    echo
-    echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_pwd/
-    echo
-elif [[ ! -e "$dev_pwd/$arg1" ]]; then\
-    echo "\n[${WARN}WARN${RESET}] Script not found in: "$dev_pwd/$arg1
-    echo
-    echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_pwd/runs
-    echo
-elif [[ ! -e "$dev_pwd/runs/$arg1" ]]; then\
-    echo "\n[${ERROR}ERROR${RESET}] Script not found in: "$dev_pwd/runs/$arg1
-    echo
-    echo "\n[${INFO}INFO${RESET}] Valid aruments include:"
-    echo "\n[cat] [ls] [ll] [tree]\n"
-    ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
-    echo
-fi
+# arg1=$1
+# arg2=$2
+# arg3=$3
+
+# if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
+#     echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+#     echo "\n\tfunctionality has moved to a a script called 'new'"
+#     echo "\n[${INFO}INFO${RESET}] Available Scripts:"
+#     # ls $scripts_dir | grep -v README.md | sed 's/^/> /'
+#     ls -l $scripts_dir | grep "^-" | awk '{print $NF}'
+#     echo
+# elif [[ "$arg1" = "-n" ]]; then
+#     echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+#     echo "\n\tfunctionality has moved to a a script called 'new'"
+#     echo
+# elif [[ "$arg1" = "new" ]]; then
+#     echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+#     echo "\n\tfunctionality has moved to a a script called 'new'"
+#     echo
+#     echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_dir/$arg1
+#     code $scripts_dir/$arg1
+#     echo
+# elif [[ -e "$scripts_dir/$arg1" ]]; then\
+#     echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_dir/$arg1
+#     code $scripts_dir/$arg1
+#     echo
+# elif [[ -e "$dev_dir/$arg1" ]]; then\
+#     echo "\n[${INFO}INFO${RESET}] Opening: " $dev_dir/$arg1
+#     code $dev_dir/$arg1
+#     echo
+# elif [[ -e "$dev_dir/runs/$arg1" ]]; then\
+#     echo "\n[${INFO}INFO${RESET}] Opening: " $dev_dir/runs/$arg1
+#     code $scripts_dir/$arg1
+#     echo
+# elif [[ ! -e "$scripts_dir/$arg1" ]]; then\
+#     echo "\n[${WARN}WARN${RESET}] Script not found in: "$scripts_dir/$arg1
+#     echo
+#     echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_dir/
+#     echo
+# elif [[ ! -e "$dev_dir/$arg1" ]]; then\
+#     echo "\n[${WARN}WARN${RESET}] Script not found in: "$dev_dir/$arg1
+#     echo
+#     echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_dir/runs
+#     echo
+# elif [[ ! -e "$dev_dir/runs/$arg1" ]]; then\
+#     echo "\n[${ERROR}ERROR${RESET}] Script not found in: "$dev_dir/runs/$arg1
+#     echo
+#     echo "\n[${INFO}INFO${RESET}] Valid aruments include:"
+#     echo "\n[cat] [ls] [ll] [tree]\n"
+#     # ls $scripts_dir | grep -v README.md | sed 's/^/> /'
+#     ls -l $scripts_dir | grep "^-" | awk '{print $NF}'
+#     echo
+# fi

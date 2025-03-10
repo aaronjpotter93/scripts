@@ -1,0 +1,3 @@
+#!/bin/zsh
+
+tmux neww -n "this should happen"
