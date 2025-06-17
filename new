@@ -1,37 +1,88 @@
 #!/bin/zsh
 
+# Directory paths
+scripts_dir=$SCRIPTS
+pkm_dir=$PKMSCRIPTS
+target_dir=$scripts_dir  # Default directory
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -p|--pkm)
+            target_dir=$pkm_dir
+            shift
+            ;;
+        -h|--help)
+            echo -e "\n[${INFO}INFO${RESET}] SUMMARY: Create/edit scripts in specified directories"
+            echo -e "\nUSAGE:"
+            echo -e "  new [options] <script-name>       Create new script"
+            echo -e "  new chmod [options] <script-name> Make script executable"
+            echo -e "\nOPTIONS:"
+            echo -e "  -p, --pkm    Use PKM scripts directory ($pkm_dir)"
+            echo -e "  -h, --help   Show this help message"
+            echo -e "\nEXAMPLES:"
+            echo -e "  new myscript          # Create in $scripts_dir"
+            echo -e "  new -p mypkm          # Create in $pkm_dir"
+            echo -e "  new chmod myscript    # Make executable in $scripts_dir"
+            echo -e "  new chmod -p mypkm    # Make executable in $pkm_dir"
+            echo
+            exit 0
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 arg1=$1
 arg2=$2
-scripts_pwd=$HOME/.local/scripts
 
-if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
-    echo "\n[${INFO}INFO${RESET}] SUMMARY: For shortcutting creating new scripts:"
-    echo "\n\tUSAGE: new [<name of new script>]"
-    echo "\n[${INFO}INFO${RESET}] Turn newly created scripts into executables:"
-    echo "\n\tUSAGE: new chmod [<name of script>]"
-    echo
-elif [[ "$arg1" = "chmod" ]]; then
-    if [[ -f "$scripts_pwd/$arg2" ]]; then
-        echo "\n[${INFO}INFO${RESET}] Turning '$arg2' into an executable file..."
-        chmod +x "$scripts_pwd/$arg2"
-        if [[ $? -eq 0 ]]; then 
-          echo "\n[${INFO}INFO${RESET}] Successfully made '$arg2' executable."
-        else
-          echo "\n[${ERROR}ERROR${RESET}] Failed to make '$arg2' executable."
+# Handle chmod command
+if [[ "$arg1" = "chmod" ]]; then
+    chmod_target=$scripts_dir  # Default to scripts directory
+    script_name=$arg2
+    
+    # Check for PKM flag in chmod
+    if [[ "$2" = "-p" || "$2" = "--pkm" ]]; then
+        chmod_target=$pkm_dir
+        script_name=$3
+        if [[ -z "$script_name" ]]; then
+            echo -e "\n[${ERROR}ERROR${RESET}] Missing script name for PKM directory"
+            exit 1
         fi
-    else
-        echo "\n[${ERROR}ERROR${RESET}] '$arg2' is not a file."
     fi
-    echo
-elif [[ -e "$scripts_pwd/$arg1" ]]; then\
-    echo "\n[${WARN}WARN${RESET}] Script: '$arg1' already exists"
-    echo "\n[${INFO}INFO${RESET}] All Scripts:"
-    ls $scripts_pwd | grep -v README.md | sed 's/^/> /'
-    echo
+
+    if [[ -f "$chmod_target/$script_name" ]]; then
+        echo -e "\n[${INFO}INFO${RESET}] Making executable: ${chmod_target/$HOME/~}/$script_name"
+        chmod +x "$chmod_target/$script_name"
+        [[ $? -eq 0 ]] && echo -e "[${INFO}SUCCESS${RESET}] Execute with: $script_name" || echo -e "[${ERROR}FAILED${RESET}]"
+    else
+        echo -e "\n[${ERROR}ERROR${RESET}] Script not found: ${chmod_target/$HOME/~}/$script_name"
+    fi
+    exit 0
+
+# Handle new script creation
+elif [[ -n "$arg1" ]]; then
+    # Check for existing script
+    if [[ -e "$target_dir/$arg1" ]]; then
+        echo -e "\n[${WARN}WARN${RESET}] Script exists: ${target_dir/$HOME/~}/$arg1"
+        echo -e "[${INFO}INFO${RESET}] Existing scripts in ${target_dir/$HOME/~}:"
+        ls -1 "$target_dir" | grep -v 'README.md' | sed "s/^/  /"
+        exit 1
+    fi
+
+    # Create new script
+    echo -e "\n[${INFO}INFO${RESET}] Creating new script in ${target_dir/$HOME/~}:"
+    echo -e "  ${INFO}$arg1${RESET}"
+    echo '#!/bin/zsh' > "$target_dir/$arg1"
+    code "$target_dir/$arg1"
+    echo -e "[${INFO}SUCCESS${RESET}] Created skeleton script. Use 'new chmod' to make executable."
+    exit 0
+
+# Handle missing arguments
 else
-    echo "\n[${INFO}INFO${RESET}] Creating a new zsh script for "$arg1...
-    echo '#!/bin/zsh' > "$scripts_pwd/$arg1"
-    echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_pwd/$arg1
-    code $scripts_pwd/$arg1
-    echo
+    echo -e "\n[${ERROR}ERROR${RESET}] Missing script name"
+    echo -e "Usage: new [options] <script-name>"
+    echo -e "Try 'new --help' for more information"
+    exit 1
 fi

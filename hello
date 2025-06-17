@@ -1,3 +1,4 @@
 #!/bin/bash
 
+echo -e "\033[1A\033[K\033[38;2;178;148;187m❯ \033[0mhello there"
 echo "general kenobi"

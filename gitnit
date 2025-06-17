@@ -1,0 +1,86 @@
+#!/usr/bin/env zsh
+
+gitinit() {
+  local target_dir
+  local readme_content
+  
+  # Handle different argument scenarios
+  if [ $# -eq 0 ]; then
+    # No arguments - use current directory
+    target_dir="."
+    echo "• Using current directory"
+  else
+    # Directory name provided as first argument
+    target_dir="$1"
+    # Handle existing directory
+    if [ -d "$target_dir" ]; then
+      if [ -d "$target_dir/.git" ]; then
+        echo "⚠️  Error: '$target_dir' is already a Git repository"
+        return 1
+      else
+        echo "• Using existing directory '$target_dir'"
+        cd "$target_dir" || return 1
+      fi
+    # Create new directory
+    else
+      echo "• Creating new directory '$target_dir'"
+      mkdir -p "$target_dir"
+      cd "$target_dir" || return 1
+    fi
+  fi
+
+  # Set README content (use argument if provided, otherwise default)
+  readme_content="${2:-"# $(basename "$PWD")\n\nRepository initialized automatically by gitinit.\n\ngitinit can be found in [my scripts repository](https://github.com/aaronjpotter93/scripts)."}"
+
+  # Create README if directory is empty
+  if [ -z "$(ls -A)" ]; then
+    echo "• Creating README.md"
+    echo -e "$readme_content" > README.md
+  fi
+
+  # Initialize Git repo (if not already initialized)
+  if [ ! -d ".git" ]; then
+    echo "• Initializing Git repository"
+    git init --quiet
+  else
+    echo "• Using existing Git repository"
+  fi
+
+  # Check if there are changes to commit
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "• Creating initial commit"
+    git add . >/dev/null
+    git commit -m "Initial commit" --quiet
+  else
+    echo "• No changes to commit"
+  fi
+
+  # Get directory name for repo
+  local repo_name=$(basename "$PWD")
+
+  # Create GitHub repository if not already exists
+  if git remote -v | grep -q origin; then
+    echo "• Remote 'origin' already exists"
+  else
+    echo "• Creating GitHub repository '$repo_name'"
+    # Remove --quiet flag from gh command
+    gh repo create "$repo_name" --public --source=.
+    if [ $? -ne 0 ]; then
+      echo "⚠️  Error: Failed to create GitHub repository"
+      return 1
+    fi
+  fi
+
+  # Push to GitHub
+  echo "• Pushing to GitHub"
+  git push -u origin HEAD --quiet
+  if [ $? -ne 0 ]; then
+    echo "⚠️  Error: Failed to push to GitHub"
+    return 1
+  fi
+
+  echo "✅ Success! Repository available at: https://github.com/aaronjpotter93/$repo_name"
+}
+
+# Run the function with arguments
+gitinit "$@"

@@ -1,57 +1,60 @@
 #!/bin/zsh
 
-echo "Sorry I can't, I'm just a baby"
+arg1=$1
+arg2=$2
+arg3=$3
 
-# arg1=$1
-# arg2=$2
-# arg3=$3
+# Non Environment Styles
+EZAEXES="\033[38;2;178;187;103m"
 
-# if [[ "$arg1" = "-h" || "$arg1" = "--help" ]]; then
-#     echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
-#     echo "\n\tfunctionality has moved to a a script called 'new'"
-#     echo "\n[${INFO}INFO${RESET}] Available Scripts:"
-#     # ls $scripts_dir | grep -v README.md | sed 's/^/> /'
-#     ls -l $scripts_dir | grep "^-" | awk '{print $NF}'
-#     echo
-# elif [[ "$arg1" = "-n" ]]; then
-#     echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
-#     echo "\n\tfunctionality has moved to a a script called 'new'"
-#     echo
-# elif [[ "$arg1" = "new" ]]; then
-#     echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
-#     echo "\n\tfunctionality has moved to a a script called 'new'"
-#     echo
-#     echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_dir/$arg1
-#     code $scripts_dir/$arg1
-#     echo
-# elif [[ -e "$scripts_dir/$arg1" ]]; then\
-#     echo "\n[${INFO}INFO${RESET}] Opening: " $scripts_dir/$arg1
-#     code $scripts_dir/$arg1
-#     echo
-# elif [[ -e "$dev_dir/$arg1" ]]; then\
-#     echo "\n[${INFO}INFO${RESET}] Opening: " $dev_dir/$arg1
-#     code $dev_dir/$arg1
-#     echo
-# elif [[ -e "$dev_dir/runs/$arg1" ]]; then\
-#     echo "\n[${INFO}INFO${RESET}] Opening: " $dev_dir/runs/$arg1
-#     code $scripts_dir/$arg1
-#     echo
-# elif [[ ! -e "$scripts_dir/$arg1" ]]; then\
-#     echo "\n[${WARN}WARN${RESET}] Script not found in: "$scripts_dir/$arg1
-#     echo
-#     echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_dir/
-#     echo
-# elif [[ ! -e "$dev_dir/$arg1" ]]; then\
-#     echo "\n[${WARN}WARN${RESET}] Script not found in: "$dev_dir/$arg1
-#     echo
-#     echo "\n[${INFO}INFO${RESET}] Looking in: "$dev_dir/runs
-#     echo
-# elif [[ ! -e "$dev_dir/runs/$arg1" ]]; then\
-#     echo "\n[${ERROR}ERROR${RESET}] Script not found in: "$dev_dir/runs/$arg1
-#     echo
-#     echo "\n[${INFO}INFO${RESET}] Valid aruments include:"
-#     echo "\n[cat] [ls] [ll] [tree]\n"
-#     # ls $scripts_dir | grep -v README.md | sed 's/^/> /'
-#     ls -l $scripts_dir | grep "^-" | awk '{print $NF}'
-#     echo
-# fi
+# Define directories to search for scripts
+dirs=(
+    "$SCRIPTS"       # Primary script directory
+    "$PKMSCRIPTS"       # Obsidian script directory
+)
+
+# Handle help, new script, and legacy options
+if [[ "$arg1" = "-h" || "$arg1" = "--help" || "$arg1" = "-n" || "$arg1" = "new" || "$arg1" = "ls" ]]; then
+    echo "\n[${WARN}WARN${RESET}] For shortcutting creating new scripts:"
+    echo "\n\tFunctionality has moved to a script called 'new'"
+    [[ "$arg1" = "new" ]] && echo "\n[${INFO}INFO${RESET}] Opening: $SCRIPTS/new" && code "$SCRIPTS/new"
+    
+    echo "\n[${INFO}INFO${RESET}] Available Executable Scripts:"
+    for dir in "${dirs[@]}"; do
+        if [[ -d "$dir" ]]; then
+            echo "\n=== ${INFO}$dir${RESET} ==="
+            # Find files with execute permission, using standard tools
+            executables=$(find "$dir" -maxdepth 1 -type f -perm -u+x -exec basename {} \; 2>/dev/null | sort)
+            if [[ -n "$executables" ]]; then
+                echo "${EZAEXES}$executables${RESET}"
+            else
+                echo "No executable scripts found"
+            fi
+        else
+            echo "\n=== ${WARN}$dir (Not Found)${RESET} ==="
+        fi
+    done
+    echo
+    exit 0
+fi
+
+# Search for the script in defined directories
+found=false
+for dir in "${dirs[@]}"; do
+    if [[ -e "$dir/$arg1" ]]; then
+        echo "\n[${INFO}INFO${RESET}] Opening: $dir/$arg1"
+        code "$dir/$arg1"
+        found=true
+        break
+    fi
+done
+
+# Handle missing scripts
+if [[ "$found" == false ]]; then
+    echo "\n[${ERROR}ERROR${RESET}] Script not found in:"
+    for dir in "${dirs[@]}"; do echo "  - $dir/$arg1"; done
+    echo "\n[${INFO}INFO${RESET}] Valid arguments include:"
+    ls -l $SCRIPTS | grep "^-" | awk '{print $NF}'
+    echo
+    exit 1
+fi

@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+import sys
+import re
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+# ANSI escape codes for colors
+GREEN = '\033[92m'
+ENDC = '\033[0m'
+
+# Timezone mapping (IANA timezone database)
+TZ_MAP = {
+    'est': 'America/New_York',
+    'edt': 'America/New_York',
+    'cst': 'America/Chicago',
+    'cdt': 'America/Chicago',
+    'mst': 'America/Denver',
+    'mdt': 'America/Denver',
+    'pst': 'America/Los_Angeles',
+    'pdt': 'America/Los_Angeles',
+    'gmt': 'GMT',
+    'utc': 'UTC',
+    'z': 'UTC'
+}
+
+def parse_time(input_str):
+    """Parse time string like '10:30 pm' into hour, minute, period"""
+    match = re.match(r'(\d{1,2})(?::(\d{2}))?\s*([ap]m?)?', input_str, re.IGNORECASE)
+    if not match:
+        raise ValueError("Invalid time format")
+    
+    hour = int(match.group(1))
+    minute = int(match.group(2) or 0)
+    period = (match.group(3) or '').lower()
+    
+    if period.startswith('p') and hour < 12:
+        hour += 12
+    elif period.startswith('a') and hour == 12:
+        hour = 0
+    
+    return hour, minute
+
+def format_time(hour, minute):
+    """Format 24-hour time to 12-hour format"""
+    period = 'AM' if hour < 12 else 'PM'
+    hour12 = hour % 12
+    hour12 = 12 if hour12 == 0 else hour12
+    return f"{hour12}:{minute:02d} {period}"
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: tz '[time] [am/pm] [timezone]'")
+        print("Example: tz '10:30 pm est'")
+        sys.exit(1)
+    
+    # Combine arguments into single string
+    input_str = ' '.join(sys.argv[1:]).lower()
+    
+    try:
+        # Extract timezone abbreviation (last word)
+        tz_abbr = input_str.split()[-1]
+        time_str = input_str[:-len(tz_abbr)].strip()
+        
+        if tz_abbr not in TZ_MAP:
+            raise ValueError(f"Unsupported timezone: {tz_abbr}")
+        
+        # Parse time components
+        hour, minute = parse_time(time_str)
+        
+        # Get current date in source timezone
+        src_zone = ZoneInfo(TZ_MAP[tz_abbr])
+        now = datetime.now(src_zone)
+        src_dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        
+        # Convert to Mountain Time
+        mt_zone = ZoneInfo('America/Denver')
+        mt_dt = src_dt.astimezone(mt_zone)
+        
+        # Format times
+        src_time = format_time(src_dt.hour, src_dt.minute)
+        mt_time = format_time(mt_dt.hour, mt_dt.minute)
+        
+        # Get timezone abbreviations
+        src_abbr = src_dt.strftime('%Z')
+        mt_abbr = mt_dt.strftime('%Z')
+        
+        # Print with color formatting
+        print(f"{GREEN}{mt_time}{ENDC} {mt_abbr} is {src_time} {src_abbr}")
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        print("Valid examples: '10:30 pm est', '5 am mst', '11:45 cst'")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
