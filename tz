@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 import sys
 import re
+import os
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, available_timezones
 
 # ANSI escape codes for colors
 GREEN = '\033[92m'
 YELLOW = '\033[93m'
+BLUE = '\033[94m'
+MAGENTA = '\033[95m'
 ENDC = '\033[0m'
 
 # Timezone mapping (IANA timezone database)
@@ -22,6 +25,125 @@ TZ_MAP = {
     'gmt': 'GMT',
     'utc': 'UTC',
     'z': 'UTC'
+}
+
+# Enhanced location to timezone mapping
+LOCATION_MAP = {
+    # US States
+    'alabama': 'America/Chicago',
+    'alaska': 'America/Anchorage',
+    'arizona': 'America/Phoenix',
+    'arkansas': 'America/Chicago',
+    'california': 'America/Los_Angeles',
+    'colorado': 'America/Denver',
+    'connecticut': 'America/New_York',
+    'delaware': 'America/New_York',
+    'florida': 'America/New_York',
+    'georgia': 'America/New_York',
+    'hawaii': 'Pacific/Honolulu',
+    'idaho': 'America/Denver',
+    'illinois': 'America/Chicago',
+    'indiana': 'America/Indiana/Indianapolis',
+    'iowa': 'America/Chicago',
+    'kansas': 'America/Chicago',
+    'kentucky': 'America/New_York',
+    'louisiana': 'America/Chicago',
+    'maine': 'America/New_York',
+    'maryland': 'America/New_York',
+    'massachusetts': 'America/New_York',
+    'michigan': 'America/Detroit',
+    'minnesota': 'America/Chicago',
+    'mississippi': 'America/Chicago',
+    'missouri': 'America/Chicago',
+    'montana': 'America/Denver',
+    'nebraska': 'America/Chicago',
+    'nevada': 'America/Los_Angeles',
+    'new hampshire': 'America/New_York',
+    'new jersey': 'America/New_York',
+    'new mexico': 'America/Denver',
+    'new york': 'America/New_York',
+    'north carolina': 'America/New_York',
+    'north dakota': 'America/Chicago',
+    'ohio': 'America/New_York',
+    'oklahoma': 'America/Chicago',
+    'oregon': 'America/Los_Angeles',
+    'pennsylvania': 'America/New_York',
+    'rhode island': 'America/New_York',
+    'south carolina': 'America/New_York',
+    'south dakota': 'America/Chicago',
+    'tennessee': 'America/Chicago',
+    'texas': 'America/Chicago',
+    'utah': 'America/Denver',
+    'vermont': 'America/New_York',
+    'virginia': 'America/New_York',
+    'washington': 'America/Los_Angeles',
+    'west virginia': 'America/New_York',
+    'wisconsin': 'America/Chicago',
+    'wyoming': 'America/Denver',
+    
+    # Major Cities
+    'london': 'Europe/London',
+    'paris': 'Europe/Paris',
+    'berlin': 'Europe/Berlin',
+    'rome': 'Europe/Rome',
+    'tokyo': 'Asia/Tokyo',
+    'seoul': 'Asia/Seoul',
+    'beijing': 'Asia/Shanghai',
+    'shanghai': 'Asia/Shanghai',
+    'hong kong': 'Asia/Hong_Kong',
+    'singapore': 'Asia/Singapore',
+    'sydney': 'Australia/Sydney',
+    'melbourne': 'Australia/Melbourne',
+    'auckland': 'Pacific/Auckland',
+    'mumbai': 'Asia/Kolkata',
+    'delhi': 'Asia/Kolkata',
+    'dubai': 'Asia/Dubai',
+    'moscow': 'Europe/Moscow',
+    'toronto': 'America/Toronto',
+    'vancouver': 'America/Vancouver',
+    'mexico city': 'America/Mexico_City',
+    'sao paulo': 'America/Sao_Paulo',
+    'cairo': 'Africa/Cairo',
+    'johannesburg': 'Africa/Johannesburg',
+    'nairobi': 'Africa/Nairobi',
+    
+    # Countries
+    'japan': 'Asia/Tokyo',
+    'korea': 'Asia/Seoul',
+    'china': 'Asia/Shanghai',
+    'india': 'Asia/Kolkata',
+    'australia': 'Australia/Sydney',
+    'russia': 'Europe/Moscow',
+    'brazil': 'America/Sao_Paulo',
+    'canada': 'America/Toronto',
+    'mexico': 'America/Mexico_City',
+    'uk': 'Europe/London',
+    'france': 'Europe/Paris',
+    'germany': 'Europe/Berlin',
+    'italy': 'Europe/Rome',
+    'egypt': 'Africa/Cairo',
+    'south africa': 'Africa/Johannesburg',
+    'kenya': 'Africa/Nairobi',
+    'new zealand': 'Pacific/Auckland',
+}
+
+# Timezone to location examples mapping
+TZ_LOCATIONS = {
+    'America/New_York': ['New York', 'Miami', 'Toronto', 'Washington DC'],
+    'America/Chicago': ['Chicago', 'Dallas', 'Mexico City', 'Houston'],
+    'America/Denver': ['Denver', 'Phoenix', 'Salt Lake City', 'El Paso'],
+    'America/Los_Angeles': ['Los Angeles', 'San Francisco', 'Seattle', 'Vancouver'],
+    'Pacific/Honolulu': ['Honolulu', 'Hawaii'],
+    'Europe/London': ['London', 'Dublin', 'Edinburgh', 'Lisbon'],
+    'Europe/Paris': ['Paris', 'Rome', 'Berlin', 'Madrid'],
+    'Asia/Tokyo': ['Tokyo', 'Seoul', 'Pyongyang'],
+    'Asia/Shanghai': ['Shanghai', 'Beijing', 'Hong Kong', 'Taipei'],
+    'Australia/Sydney': ['Sydney', 'Melbourne', 'Canberra'],
+    'Asia/Kolkata': ['Mumbai', 'Delhi', 'Bangalore', 'Kolkata'],
+    'Asia/Dubai': ['Dubai', 'Abu Dhabi', 'Muscat'],
+    'Europe/Moscow': ['Moscow', 'St. Petersburg', 'Kyiv'],
+    'America/Sao_Paulo': ['Sao Paulo', 'Rio de Janeiro', 'Brasilia'],
+    'UTC': ['UTC', 'GMT', 'Zulu Time'],
 }
 
 def parse_time(input_str):
@@ -58,63 +180,200 @@ def get_timezone_abbr(dt):
         return abbr
     return ''.join(c for c in abbr if c.isalpha()).upper()
 
+def get_timezone_for_location(location):
+    """Get IANA timezone for a location name"""
+    location = location.lower()
+    
+    # Check direct location mapping first
+    if location in LOCATION_MAP:
+        return LOCATION_MAP[location]
+    
+    # Check if it's a known timezone abbreviation
+    if location in TZ_MAP:
+        return TZ_MAP[location]
+    
+    # Try to find matching location in the keys
+    for loc_name in LOCATION_MAP:
+        if location in loc_name:
+            return LOCATION_MAP[loc_name]
+    
+    # Try to find matching timezone in available timezones
+    for tz in available_timezones():
+        if location in tz.lower():
+            return tz
+    
+    return None
+
+def list_timezone_locations(tz_identifier):
+    """List example locations for a timezone"""
+    # Normalize timezone identifier
+    tz_identifier = tz_identifier.lower()
+    
+    # Check if it's an abbreviation
+    if tz_identifier in TZ_MAP:
+        tz_name = TZ_MAP[tz_identifier]
+        if tz_name in TZ_LOCATIONS:
+            return TZ_LOCATIONS[tz_name]
+    
+    # Check if it's a known timezone name
+    for tz_name in TZ_LOCATIONS:
+        if tz_identifier in tz_name.lower():
+            return TZ_LOCATIONS[tz_name]
+    
+    # Check if it's a location that maps to a timezone
+    tz_name = get_timezone_for_location(tz_identifier)
+    if tz_name and tz_name in TZ_LOCATIONS:
+        return TZ_LOCATIONS[tz_name]
+    
+    # Try to find matching timezone
+    for tz in available_timezones():
+        if tz_identifier in tz.lower():
+            return [tz]
+    
+    return None
+
+def print_current_time(target_identifier, highlight_color=YELLOW):
+    """Print current time in specified timezone or location"""
+    # Get timezone from identifier
+    if target_identifier in TZ_MAP:
+        tz_name = TZ_MAP[target_identifier]
+    else:
+        tz_name = get_timezone_for_location(target_identifier)
+    
+    if not tz_name:
+        raise ValueError(f"Unknown timezone or location: {target_identifier}")
+    
+    # Get current time in UTC
+    utc_dt = datetime.now(timezone.utc)
+    
+    # Convert to target timezone
+    target_zone = ZoneInfo(tz_name)
+    target_dt = utc_dt.astimezone(target_zone)
+    
+    # Convert to Mountain Time for reference
+    mt_zone = ZoneInfo('America/Denver')
+    mt_dt = utc_dt.astimezone(mt_zone)
+    
+    # Format times and get abbreviations
+    target_time = format_time(target_dt)
+    mt_time = format_time(mt_dt)
+    target_abbr = get_timezone_abbr(target_dt) or target_identifier.upper()
+    mt_abbr = get_timezone_abbr(mt_dt) or 'MT'
+    
+    # Print with color highlight for target time
+    print(f"Current time: {highlight_color}{target_time} {target_abbr}{ENDC}")
+    print(f"Your time: {mt_time} {mt_abbr}")
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: tz '[time] [am/pm] [timezone]' or tz 'now [timezone]'")
+        print("Usage: tz '[time] [am/pm] [timezone]' or tz 'now [timezone]' or tz 'ls [timezone]' or tz 'which [location]'")
         print("Examples:")
-        print("  tz '10:30 pm est'   # Convert specific time to Mountain Time")
-        print("  tz now est          # Convert current time to Eastern Time")
+        print("  tz '10:30 pm est'      # Convert specific time to Mountain Time")
+        print("  tz now est             # Convert current time to Eastern Time")
+        print("  tz ls est              # List locations in Eastern Time")
+        print("  tz which california    # Show timezone for California")
+        print("  tz london              # Show current time in London")
+        print("\nAvailable timezones: EST, CST, MST, PST, GMT, UTC")
+        print("Available locations: " + ", ".join(sorted(set(LOCATION_MAP.keys()))[:100]) + "...")
         sys.exit(1)
     
     # Combine arguments into single string
     input_str = ' '.join(sys.argv[1:]).lower()
     
     try:
+        # Handle "ls" command (list locations for timezone)
+        if input_str.startswith('ls'):
+            parts = input_str.split(maxsplit=1)
+            if len(parts) < 2:
+                # List all known timezones if no argument
+                print("Available timezones:")
+                for abbr in sorted(TZ_MAP.keys()):
+                    print(f"  - {abbr.upper()}")
+                print("\nAvailable locations: " + ", ".join(sorted(set(LOCATION_MAP.keys()))[:100]) + "...")
+                return
+            
+            tz_identifier = parts[1].strip()
+            locations = list_timezone_locations(tz_identifier)
+            
+            if not locations:
+                print(f"No locations found for: {tz_identifier}")
+                print("Supported timezones: est, cst, mst, pst, gmt, utc")
+                print("Try one of these locations: new york, london, tokyo, california")
+            else:
+                print(f"Locations in {tz_identifier.upper()} timezone:")
+                for loc in locations:
+                    print(f"  - {loc}")
+            return
+        
+        # Handle "which" command (show timezone for location)
+        if input_str.startswith('which'):
+            parts = input_str.split(maxsplit=1)
+            if len(parts) < 2:
+                # List all known locations if no argument
+                print("Available locations:")
+                for loc in sorted(set(LOCATION_MAP.keys())):
+                    print(f"  - {loc.title()}")
+                return
+            
+            location = parts[1].strip()
+            tz_name = get_timezone_for_location(location)
+            
+            if not tz_name:
+                print(f"Unknown location: {location}")
+                print("Try one of these: new york, london, tokyo, california, etc.")
+            else:
+                # Get current abbreviation
+                utc_dt = datetime.now(timezone.utc)
+                target_zone = ZoneInfo(tz_name)
+                target_dt = utc_dt.astimezone(target_zone)
+                abbr = get_timezone_abbr(target_dt) or tz_name.split('/')[-1].upper()
+                
+                print(f"{location.title()} timezone: {BLUE}{tz_name}{ENDC} ({abbr})")
+            return
+        
         # Handle "now" command
         if input_str.startswith('now'):
-            parts = input_str.split()
+            parts = input_str.split(maxsplit=1)
             if len(parts) < 2:
-                raise ValueError("Missing timezone for 'now' command")
+                # Show current time in Mountain Time if no argument
+                utc_dt = datetime.now(timezone.utc)
+                mt_zone = ZoneInfo('America/Denver')
+                mt_dt = utc_dt.astimezone(mt_zone)
+                mt_time = format_time(mt_dt)
+                mt_abbr = get_timezone_abbr(mt_dt) or 'MT'
+                print(f"Your current time: {GREEN}{mt_time} {mt_abbr}{ENDC}")
+                return
             
-            tz_abbr = parts[1]
-            if tz_abbr not in TZ_MAP:
-                raise ValueError(f"Unsupported timezone: {tz_abbr}")
-            
-            # Get current time in UTC
-            utc_dt = datetime.now(timezone.utc)
-            
-            # Convert to target timezone
-            target_zone = ZoneInfo(TZ_MAP[tz_abbr])
-            target_dt = utc_dt.astimezone(target_zone)
-            
-            # Convert to Mountain Time for reference
-            mt_zone = ZoneInfo('America/Denver')
-            mt_dt = utc_dt.astimezone(mt_zone)
-            
-            # Format times and get abbreviations
-            target_time = format_time(target_dt)
-            mt_time = format_time(mt_dt)
-            target_abbr = get_timezone_abbr(target_dt) or tz_abbr.upper()
-            mt_abbr = get_timezone_abbr(mt_dt) or 'MT'
-            
-            # Print with yellow highlight for target time
-            print(f"Current time: {YELLOW}{target_time} {target_abbr}{ENDC}")
-            print(f"Your time: {mt_time} {mt_abbr}")
+            target_identifier = parts[1].strip()
+            print_current_time(target_identifier)
+            return
+        
+        # Handle location-only command (implicit "now")
+        if not any(char.isdigit() for char in input_str):
+            # No digits - treat as location for current time
+            print_current_time(input_str, highlight_color=GREEN)
             return
         
         # Original conversion functionality
         # Extract timezone abbreviation (last word)
-        tz_abbr = input_str.split()[-1]
-        time_str = input_str[:-len(tz_abbr)].strip()
+        words = input_str.split()
+        tz_identifier = words[-1]
+        time_str = ' '.join(words[:-1])
         
-        if tz_abbr not in TZ_MAP:
-            raise ValueError(f"Unsupported timezone: {tz_abbr}")
+        # Get timezone name
+        if tz_identifier in TZ_MAP:
+            tz_name = TZ_MAP[tz_identifier]
+        else:
+            tz_name = get_timezone_for_location(tz_identifier)
+        
+        if not tz_name:
+            raise ValueError(f"Unsupported timezone or location: {tz_identifier}")
         
         # Parse time components
         hour, minute = parse_time(time_str)
         
         # Get current date in source timezone
-        src_zone = ZoneInfo(TZ_MAP[tz_abbr])
+        src_zone = ZoneInfo(tz_name)
         now = datetime.now(src_zone)
         src_dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         
@@ -127,7 +386,7 @@ def main():
         mt_time = format_time(mt_dt)
         
         # Get timezone abbreviations
-        src_abbr = get_timezone_abbr(src_dt) or tz_abbr.upper()
+        src_abbr = get_timezone_abbr(src_dt) or tz_identifier.upper()
         mt_abbr = get_timezone_abbr(mt_dt) or 'MT'
         
         # Print with green highlight for Mountain Time
@@ -136,8 +395,11 @@ def main():
     except Exception as e:
         print(f"Error: {e}")
         print("Valid examples:")
-        print("  tz '10:30 pm est'   # Convert specific time to MT")
-        print("  tz now est          # Convert current time to Eastern Time")
+        print("  tz '10:30 pm est'      # Convert specific time to MT")
+        print("  tz now est             # Convert current time to Eastern Time")
+        print("  tz ls est              # List locations in Eastern Time")
+        print("  tz which california    # Show timezone for California")
+        print("  tz london              # Show current time in London")
         sys.exit(1)
 
 if __name__ == "__main__":
