@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 # ANSI escape codes for colors
 GREEN = '\033[92m'
+YELLOW = '\033[93m'
 ENDC = '\033[0m'
 
 # Timezone mapping (IANA timezone database)
@@ -40,23 +41,68 @@ def parse_time(input_str):
     
     return hour, minute
 
-def format_time(hour, minute):
-    """Format 24-hour time to 12-hour format"""
+def format_time(dt):
+    """Format datetime to 12-hour time"""
+    hour = dt.hour
+    minute = dt.minute
     period = 'AM' if hour < 12 else 'PM'
     hour12 = hour % 12
     hour12 = 12 if hour12 == 0 else hour12
     return f"{hour12}:{minute:02d} {period}"
 
+def get_timezone_abbr(dt):
+    """Get timezone abbreviation from datetime"""
+    abbr = dt.strftime('%Z')
+    # Standardize common abbreviations
+    if not abbr or abbr in ('UTC', 'GMT'):
+        return abbr
+    return ''.join(c for c in abbr if c.isalpha()).upper()
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: tz '[time] [am/pm] [timezone]'")
-        print("Example: tz '10:30 pm est'")
+        print("Usage: tz '[time] [am/pm] [timezone]' or tz 'now [timezone]'")
+        print("Examples:")
+        print("  tz '10:30 pm est'   # Convert specific time to Mountain Time")
+        print("  tz now est          # Convert current time to Eastern Time")
         sys.exit(1)
     
     # Combine arguments into single string
     input_str = ' '.join(sys.argv[1:]).lower()
     
     try:
+        # Handle "now" command
+        if input_str.startswith('now'):
+            parts = input_str.split()
+            if len(parts) < 2:
+                raise ValueError("Missing timezone for 'now' command")
+            
+            tz_abbr = parts[1]
+            if tz_abbr not in TZ_MAP:
+                raise ValueError(f"Unsupported timezone: {tz_abbr}")
+            
+            # Get current time in UTC
+            utc_dt = datetime.now(timezone.utc)
+            
+            # Convert to target timezone
+            target_zone = ZoneInfo(TZ_MAP[tz_abbr])
+            target_dt = utc_dt.astimezone(target_zone)
+            
+            # Convert to Mountain Time for reference
+            mt_zone = ZoneInfo('America/Denver')
+            mt_dt = utc_dt.astimezone(mt_zone)
+            
+            # Format times and get abbreviations
+            target_time = format_time(target_dt)
+            mt_time = format_time(mt_dt)
+            target_abbr = get_timezone_abbr(target_dt) or tz_abbr.upper()
+            mt_abbr = get_timezone_abbr(mt_dt) or 'MT'
+            
+            # Print with yellow highlight for target time
+            print(f"Current time: {YELLOW}{target_time} {target_abbr}{ENDC}")
+            print(f"Your time: {mt_time} {mt_abbr}")
+            return
+        
+        # Original conversion functionality
         # Extract timezone abbreviation (last word)
         tz_abbr = input_str.split()[-1]
         time_str = input_str[:-len(tz_abbr)].strip()
@@ -77,19 +123,21 @@ def main():
         mt_dt = src_dt.astimezone(mt_zone)
         
         # Format times
-        src_time = format_time(src_dt.hour, src_dt.minute)
-        mt_time = format_time(mt_dt.hour, mt_dt.minute)
+        src_time = format_time(src_dt)
+        mt_time = format_time(mt_dt)
         
         # Get timezone abbreviations
-        src_abbr = src_dt.strftime('%Z')
-        mt_abbr = mt_dt.strftime('%Z')
+        src_abbr = get_timezone_abbr(src_dt) or tz_abbr.upper()
+        mt_abbr = get_timezone_abbr(mt_dt) or 'MT'
         
-        # Print with color formatting
+        # Print with green highlight for Mountain Time
         print(f"{GREEN}{mt_time}{ENDC} {mt_abbr} is {src_time} {src_abbr}")
     
     except Exception as e:
         print(f"Error: {e}")
-        print("Valid examples: '10:30 pm est', '5 am mst', '11:45 cst'")
+        print("Valid examples:")
+        print("  tz '10:30 pm est'   # Convert specific time to MT")
+        print("  tz now est          # Convert current time to Eastern Time")
         sys.exit(1)
 
 if __name__ == "__main__":
