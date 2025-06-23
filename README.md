@@ -1,5 +1,28 @@
 # My Personal Helper Terminal Scripts
 
+---
+
+# June 23, 2025 | Git Commit Removed the Following Scripts
+        deleted:    clean
+        deleted:    ec2
+        deleted:    figme
+        deleted:    gitgo
+        deleted:    inv
+        deleted:    obsidian
+        deleted:    oddeven
+        deleted:    pkgs
+        deleted:    ready-tmux
+        deleted:    restore
+        deleted:    rmux
+        deleted:    scrape
+        deleted:    tmux-sessionizer
+        deleted:    treebat
+        deleted:    ubuntu
+        deleted:    uzip
+        deleted:    week50
+
+---
+
 [//]: # (Tree with anchor links - use HTML to preserve formatting)
 <pre class="highlight"><code>.
 ├── <a href="#budget">budget</a>
