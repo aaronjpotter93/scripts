@@ -120,13 +120,9 @@ prefix="${gh_json:0:80}"
 prefix="${prefix//$'\n'/ }"
 prefix_escaped="${prefix//\"/\\\"}"
 
-if [[ -n "${cutoff_iso:-}" ]]; then
-    # Filter the array by cutoff, then sort, then iterate elements
-    jq_program='map(select(.updatedAt >= $cutoff)) | sort_by(.updatedAt) | reverse | .[]'
-else
-    # Just sort full array then iterate elements
-    jq_program='sort_by(.updatedAt) | reverse | .[]'
-fi
+# Always sort all GitHub repos by updatedAt; cutoff is applied later in bash
+# only for remote-only repos (those without a local clone).
+jq_program='sort_by(.updatedAt) | reverse | .[]'
 
 debug_log "run1" "H1" "ghls:gh_json" "gh_json snapshot" "$(printf '{"length":%s,"prefix":"%s","jqProgram":"%s"}' \
     "${#gh_json}" "$prefix_escaped" "$jq_program")"
@@ -143,9 +139,18 @@ format_updated() {
         return
     fi
 
-    local epoch
+    local epoch=""
     if [[ "$date_mode" == "bsd" ]]; then
-        epoch="$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso" +%s 2>/dev/null || true)"
+        # Normalize timezone offsets with a colon (e.g., -06:00 -> -0600) for BSD date.
+        local iso_norm="$iso"
+        if [[ "$iso_norm" =~ ^([0-9T:-]+)([+-][0-9]{2}):([0-9]{2})$ ]]; then
+            iso_norm="${BASH_REMATCH[1]}${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
+        fi
+        # Try ISO with 'Z' first, then with numeric timezone offset.
+        epoch="$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso_norm" +%s 2>/dev/null || true)"
+        if [[ ! "$epoch" =~ ^[0-9]+$ ]]; then
+            epoch="$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$iso_norm" +%s 2>/dev/null || true)"
+        fi
     else
         epoch="$(date -d "$iso" +%s 2>/dev/null || true)"
     fi
@@ -159,14 +164,26 @@ format_updated() {
     if (( diff >= 0 && diff < 86400 )); then
         # Same-day-ish: show local time only.
         if [[ "$date_mode" == "bsd" ]]; then
-            date -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso" "+%I:%M %p" 2>/dev/null || printf "%s" "$iso"
+            local iso_norm="$iso"
+            if [[ "$iso_norm" =~ ^([0-9T:-]+)([+-][0-9]{2}):([0-9]{2})$ ]]; then
+                iso_norm="${BASH_REMATCH[1]}${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
+            fi
+            date -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso_norm" "+%I:%M %p" 2>/dev/null || \
+            date -j -f "%Y-%m-%dT%H:%M:%S%z" "$iso_norm" "+%I:%M %p" 2>/dev/null || \
+            printf "%s" "$iso"
         else
             date -d "$iso" "+%I:%M %p" 2>/dev/null || printf "%s" "$iso"
         fi
     else
         # Older than a day: show date only.
         if [[ "$date_mode" == "bsd" ]]; then
-            date -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso" "+%Y-%m-%d" 2>/dev/null || printf "%s" "$iso"
+            local iso_norm="$iso"
+            if [[ "$iso_norm" =~ ^([0-9T:-]+)([+-][0-9]{2}):([0-9]{2})$ ]]; then
+                iso_norm="${BASH_REMATCH[1]}${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
+            fi
+            date -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso_norm" "+%Y-%m-%d" 2>/dev/null || \
+            date -j -f "%Y-%m-%dT%H:%M:%S%z" "$iso_norm" "+%Y-%m-%d" 2>/dev/null || \
+            printf "%s" "$iso"
         else
             date -d "$iso" "+%Y-%m-%d" 2>/dev/null || printf "%s" "$iso"
         fi
@@ -233,35 +250,37 @@ git_status_for_repo() {
 }
 
 jq_output=""
-if [[ -n "${cutoff_iso:-}" ]]; then
-    if ! jq_output="$(jq -r \
-        --arg user "$current_user" \
-        --arg cutoff "$cutoff_iso" \
-        "$jq_program | \"\(.name)\t\(.owner.login)\t\(.isPrivate)\t\(.updatedAt)\"" \
-        <<<"$gh_json" 2>&1)"; then
-        debug_log "run1" "H2" "ghls:jq" "jq failed" "$(printf '{"cutoffUsed":true,"jqOutputPrefix":"%s"}' "${jq_output:0:120}")"
-        echo "ghls: jq processing failed (see debug log)." >&2
-        exit 1
-    fi
-else
-    if ! jq_output="$(jq -r \
-        --arg user "$current_user" \
-        "$jq_program | \"\(.name)\t\(.owner.login)\t\(.isPrivate)\t\(.updatedAt)\"" \
-        <<<"$gh_json" 2>&1)"; then
-        debug_log "run1" "H2" "ghls:jq" "jq failed" "$(printf '{"cutoffUsed":false,"jqOutputPrefix":"%s"}' "${jq_output:0:120}")"
-        echo "ghls: jq processing failed (see debug log)." >&2
-        exit 1
-    fi
+if ! jq_output="$(jq -r \
+    --arg user "$current_user" \
+    "$jq_program | \"\(.name)\t\(.owner.login)\t\(.isPrivate)\t\(.updatedAt)\"" \
+    <<<"$gh_json" 2>&1)"; then
+    debug_log "run1" "H2" "ghls:jq" "jq failed" "$(printf '{"jqOutputPrefix":"%s"}' "${jq_output:0:120}")"
+    echo "ghls: jq processing failed (see debug log)." >&2
+    exit 1
 fi
 
-debug_log "run1" "H2" "ghls:jq" "jq succeeded" "$(printf '{"cutoffUsed":%s,"outputSample":"%s"}' \
-    "$([[ -n "${cutoff_iso:-}" ]] && echo true || echo false)" "${jq_output:0:80}")"
+debug_log "run1" "H2" "ghls:jq" "jq succeeded" "$(printf '{"outputSample":"%s"}' "${jq_output:0:80}")"
 
-printf '%s\n' "$jq_output" | while IFS=$'\t' read -r name owner is_private updated; do
+seen_repos=""
+
+while IFS=$'\t' read -r name owner is_private updated; do
     display_name="$name"
     if [[ "$owner" != "$current_user" ]]; then
         display_name="$owner/$name"
     fi
+
+    local_path="$name"
+    has_local=false
+    if [[ -d "$local_path/.git" ]]; then
+        has_local=true
+    fi
+
+    # Apply cutoff only to remote-only repos when not showing all.
+    if [[ -n "${cutoff_iso:-}" && "$show_all" == false && "$has_local" == false && "$updated" < "$cutoff_iso" ]]; then
+        continue
+    fi
+
+    seen_repos+=" $name"
 
     status_label="$(git_status_for_repo "$name")"
 
@@ -279,7 +298,7 @@ printf '%s\n' "$jq_output" | while IFS=$'\t' read -r name owner is_private updat
         esac
     fi
 
-    if [[ "$status_label" == "NC" ]]; then
+    if [[ "$status_label" == "not-cloned" ]]; then
         status_text="not-cloned"
     elif [[ "$status_label" == "ERR" ]]; then
         status_text="error"
@@ -288,10 +307,90 @@ printf '%s\n' "$jq_output" | while IFS=$'\t' read -r name owner is_private updat
         fi
     fi
 
+    # Prefer local last-commit time when a local clone exists; otherwise fall back to GitHub's updatedAt.
+    display_updated="$updated"
+    if [[ "$has_local" == true ]]; then
+        if pushd "$local_path" >/dev/null 2>&1; then
+            local_last="$(git log -1 --format=%cI 2>/dev/null || echo "")"
+            popd >/dev/null 2>&1 || true
+            if [[ -n "$local_last" ]]; then
+                display_updated="$local_last"
+            fi
+        fi
+    fi
+
+    formatted_updated="$(format_updated "$display_updated")"
+
+    printf "%s%-${width_status}s %-${width_name}s %-${width_updated}s%s\n" \
+        "$status_color" "$status_text" "$display_name" "$formatted_updated" "$c_reset"
+done <<<"$jq_output"
+
+# Include local-only git repos (no corresponding GitHub repo) regardless of age.
+for d in */.git; do
+    repo="${d%/.git}"
+    # Skip if we've already printed this repo from the GitHub list.
+    if [[ " $seen_repos " == *" $repo "* ]]; then
+        continue
+    fi
+
+    display_name="$repo"
+    status_label="$(git_status_for_repo "$repo")"
+
+    status_text="$status_label"
+    status_color=""
+    if $color_enabled; then
+        case "$status_label" in
+            clean)
+                status_color="$c_clean"
+                ;;
+            dirty|ahead|behind|diverged)
+                status_color="$c_dirty"
+                ;;
+        esac
+    fi
+
+    if [[ "$status_label" == "not-cloned" ]]; then
+        status_text="not-cloned"
+    elif [[ "$status_label" == "ERR" ]]; then
+        status_text="error"
+        if $color_enabled; then
+            status_color="$c_dirty"
+        fi
+    fi
+
+    updated=""
+    if pushd "$repo" >/dev/null 2>&1; then
+        updated="$(git log -1 --format=%cI 2>/dev/null || echo "")"
+        popd >/dev/null 2>&1 || true
+    fi
     formatted_updated="$(format_updated "$updated")"
+
+    printf "%s%-${width_status}s %-${width_name}s %-${width_updated}s%s\n" \
+        "$status_color" "$display_name" "$status_text" "$formatted_updated" "$c_reset"
+done
+
+# Include local directories without a git repo or GitHub entry.
+for d in */; do
+    repo="${d%/}"
+    # Skip if we've already printed this repo from the GitHub list or as a git repo.
+    if [[ " $seen_repos " == *" $repo "* ]]; then
+        continue
+    fi
+    if [[ -d "$repo/.git" ]]; then
+        continue
+    fi
+
+    display_name="$repo"
+    status_label="no-git"
+    status_text="$status_label"
+    status_color=""
+    if $color_enabled; then
+        status_color="$c_dirty"
+    fi
+
+    formatted_updated=""
 
     printf "%s%-${width_status}s %-${width_name}s %-${width_updated}s%s\n" \
         "$status_color" "$status_text" "$display_name" "$formatted_updated" "$c_reset"
 done
-
 
