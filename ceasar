@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+import sys
+import os
+
+def caesar_shift(text, shift):
+    shift = shift % 26
+    result = []
+    for ch in text:
+        if "a" <= ch <= "z":
+            base = ord("a")
+            result.append(chr((ord(ch) - base + shift) % 26 + base))
+        elif "A" <= ch <= "Z":
+            base = ord("A")
+            result.append(chr((ord(ch) - base + shift) % 26 + base))
+        else:
+            result.append(ch)
+    return "".join(result)
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: ceasar <shift> <input_file>")
+        sys.exit(1)
+
+    try:
+        shift = int(sys.argv[1])
+    except ValueError:
+        print("Shift must be an integer.")
+        sys.exit(1)
+
+    input_path = sys.argv[2]
+    if not os.path.isfile(input_path):
+        print(f"Input file not found: {input_path}")
+        sys.exit(1)
+
+    with open(input_path, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    output_name = f"ceasared{shift}_{os.path.basename(input_path)}"
+    output_path = os.path.join(os.path.dirname(input_path), output_name)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(caesar_shift(text, shift))
+
+    print(f"Wrote: {output_path}")
+
+if __name__ == "__main__":
+    main()

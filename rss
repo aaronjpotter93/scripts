@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+from html import escape
+import sys
+import os
+
+def rss_to_html(rss_file, html_file):
+    tree = ET.parse(rss_file)
+    root = tree.getroot()
+    
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Letterboxd Feed</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .item { margin-bottom: 40px; padding: 20px; border-bottom: 1px solid #eee; }
+        h2 { margin-top: 0; }
+        .meta { color: #666; font-size: 0.9em; }
+        img { max-width: 200px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Letterboxd Feed</h1>
+"""
+    
+    for item in root.findall('.//item'):
+        title = item.find('title')
+        link = item.find('link')
+        desc = item.find('description')
+        date = item.find('pubDate')
+        
+        html += '<div class="item">'
+        if title is not None:
+            html += f'<h2>{escape(title.text)}</h2>'
+        if date is not None:
+            html += f'<div class="meta">{escape(date.text)}</div>'
+        if desc is not None and desc.text:
+            html += f'<div>{desc.text}</div>'
+        if link is not None:
+            html += f'<p><a href="{escape(link.text)}">View on Letterboxd</a></p>'
+        html += '</div>'
+    
+    html += '</body></html>'
+    
+    with open(html_file, 'w', encoding='utf-8') as f:
+        f.write(html)
+    print(f"Converted to {html_file}")
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: rss <rss_file> [output_html_file]")
+        sys.exit(1)
+    
+    rss_file = sys.argv[1]
+    if not os.path.exists(rss_file):
+        print(f"Error: File not found: {rss_file}")
+        sys.exit(1)
+    
+    # Default output to same directory as input file
+    if len(sys.argv) > 2:
+        html_file = sys.argv[2]
+    else:
+        base = os.path.splitext(rss_file)[0]
+        html_file = base + '.html'
+    
+    rss_to_html(rss_file, html_file)

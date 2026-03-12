@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+
+import json
+import requests
+import re
+from typing import List, Dict, Optional
+from pathlib import Path
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+API_URL = "https://ocr.asprise.com/api/v1/receipt"
+IMAGE_PATH = "/Users/aaron/Downloads/winco.jpg"
+
+
+# ============================================================
+#  OCR API CALL
+# ============================================================
+
+def call_ocr_api(image_path: str) -> dict:
+    """Call Asprise OCR API and return the JSON response."""
+    with open(image_path, "rb") as f:
+        res = requests.post(
+            API_URL,
+            data={
+                "api_key": "TEST",
+                "recognizer": "auto",
+                "ref_no": "python_receipt_test"
+            },
+            files={"file": f},
+            timeout=60
+        )
+
+    try:
+        data = res.json()
+    except json.JSONDecodeError:
+        print("Error: API did not return valid JSON:")
+        print(res.text)
+        raise
+
+    # Always save raw JSON response
+    Path("response_full.json").write_text(json.dumps(data, indent=2))
+    print("Saved full API response → response_full.json")
+    return data
+
+
+# ============================================================
+#  RECEIPT PARSER
+# ============================================================
+
+class ReceiptParser:
+    def __init__(self, raw_text: str):
+        self.raw = raw_text
+        self.lines = [l.rstrip() for l in raw_text.splitlines() if l.strip()]
+
+    # ------------------------------
+    # Public API
+    # ------------------------------
+
+    def parse(self) -> dict:
+        return {
+            "merchant_name": self.extract_merchant_name(),
+            "merchant_website": self.extract_merchant_website(),
+            "date": self.extract_date(),
+            "time": self.extract_time(),
+            "items": self.extract_items(),
+        }
+
+    # ------------------------------
+    # Merchant Info
+    # ------------------------------
+
+    def extract_merchant_name(self) -> Optional[str]:
+        for i in range(5):
+            if i < len(self.lines):
+                if "winco" in self.lines[i].lower():
+                    name = " ".join(self.lines[i:i+2])
+                    return name.replace("FOODS", "Foods").strip()
+        return None
+
+    def extract_merchant_website(self) -> Optional[str]:
+        for line in self.lines:
+            m = re.search(r'(https?://\S+|www\.\S+)', line)
+            if m:
+                return m.group(1)
+        return None
+
+    # ------------------------------
+    # Date / Time
+    # ------------------------------
+
+    def extract_date(self) -> Optional[str]:
+        m = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', self.raw)
+        return m.group(1) if m else None
+
+    def extract_time(self) -> Optional[str]:
+        m = re.search(r'Time:\s*([0-2]?\d:\s*\d\d)', self.raw)
+        if m:
+            return m.group(1).replace(" ", "")
+        m = re.search(r'\b([0-2]?\d:[0-5]\d)\b', self.raw)
+        return m.group(1) if m else None
+
+    # ------------------------------
+    # Item Parsing
+    # ------------------------------
+
+    item_pattern = re.compile(r'(.+?)\s+(\d{4,13})\s+(\d+\.\d{2})\s+([F ]?)$')
+    qty_pattern = re.compile(r'(\d+)\s+(\d+\.\d+)\s+EACH')
+    weight_pattern = re.compile(r'(\d+\.\d+)\s*lb\s*@\s*(\d+\.\d+)')
+
+    def extract_items(self) -> List[Dict]:
+        items = []
+        i = 0
+        while i < len(self.lines):
+            line = self.lines[i]
+            m = self.item_pattern.search(line)
+            if m:
+                description = m.group(1).strip()
+                upc = m.group(2)
+                amount = float(m.group(3))
+                flags = m.group(4).strip() or None
+
+                qty = None
+                unit_price = None
+                weight = None
+                per_lb = None
+
+                # Quantity line below?
+                if i + 1 < len(self.lines):
+                    qm = self.qty_pattern.search(self.lines[i + 1])
+                    if qm:
+                        qty = int(qm.group(1))
+                        unit_price = float(qm.group(2))
+                        i += 1
+
+                # Weight line below?
+                if i + 1 < len(self.lines):
+                    wm = self.weight_pattern.search(self.lines[i + 1])
+                    if wm:
+                        weight = float(wm.group(1))
+                        per_lb = float(wm.group(2))
+                        i += 1
+
+                items.append({
+                    "description": description,
+                    "upc": upc,
+                    "amount": amount,
+                    "flags": flags,
+                    "qty": qty,
+                    "unit_price": unit_price,
+                    "weight_lb": weight,
+                    "per_lb": per_lb
+                })
+
+            i += 1
+
+        return items
+
+
+# ============================================================
+#  MAIN EXECUTION
+# ============================================================
+
+def main():
+    # 1. Call OCR API
+    api_data = call_ocr_api(IMAGE_PATH)
+
+    # 2. Get the first receipt's raw OCR text
+    receipts = api_data.get("receipts", [])
+    if not receipts:
+        print("Error: No receipts returned in API response.")
+        return
+
+    raw_text = receipts[0].get("ocr_text")
+    if not raw_text:
+        print("Error: 'ocr_text' missing from first receipt.")
+        return
+
+    # 3. Save raw OCR text (optional)
+    Path("receipt_raw_text.txt").write_text(raw_text)
+    print("Saved raw OCR text → receipt_raw_text.txt")
+
+    # 4. Parse the OCR text
+    parser = ReceiptParser(raw_text)
+    parsed = parser.parse()
+
+    # 5. Print parsed receipt
+    print("\nParsed Receipt JSON:\n")
+    print(json.dumps(parsed, indent=2))
+
+
+if __name__ == "__main__":
+    main()

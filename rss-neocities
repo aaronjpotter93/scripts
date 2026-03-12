@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+import os
+import re
+import requests
+import xml.etree.ElementTree as ET
+import json
+
+RSS_URL = 'https://letterboxd.com/aaronjp93/rss/'
+POSTERS_DIR = os.path.expandvars('$REPOS/github.com/neocities/assets/posters')
+MOVIES_JSON = os.path.expandvars('$REPOS/github.com/neocities/assets/movies.json')
+NUM_MOVIES = 4
+
+os.makedirs(POSTERS_DIR, exist_ok=True)
+
+response = requests.get(RSS_URL)
+root = ET.fromstring(response.content)
+
+# Corrected namespace based on your RSS feed
+ns = {
+    'letterboxd': 'https://letterboxd.com',
+    'tmdb': 'https://themoviedb.org',
+    'dc': 'http://purl.org/dc/elements/1.1/'
+}
+
+items = root.findall('.//item')
+movies = []
+
+for idx, item in enumerate(items[:NUM_MOVIES]):
+    try:
+        # Extract title
+        title = item.find('title').text
+        
+        # Extract poster URL from description (it's in an img tag)
+        description = item.find('description').text
+        poster_match = re.search(r'<img src="([^"]+)"', description)
+        if poster_match:
+            poster_url = poster_match.group(1)
+        else:
+            print(f"Warning: No poster found for {title}")
+            continue
+            
+        # Extract rating
+        rating_elem = item.find('letterboxd:memberRating', ns)
+        rating = rating_elem.text if rating_elem is not None else None
+        
+        # Extract link
+        link = item.find('link').text
+        
+        # Extract description text (removing HTML tags)
+        description_text = re.sub(r'<[^>]+>', '', description)
+        
+        # Download poster image
+        poster_filename = f'poster{idx+1}.jpg'
+        poster_path = os.path.join(POSTERS_DIR, poster_filename)
+        
+        img_data = requests.get(poster_url).content
+        with open(poster_path, 'wb') as f:
+            f.write(img_data)
+
+        movies.append({
+            'title': title,
+            'poster': f'../assets/posters/{poster_filename}',
+            'rating': rating,
+            'liked': True if rating and float(rating) >= 4.0 else False,  # Assuming 4+ stars means liked
+            'description': description_text,
+            'link': link
+        })
+    
+    except Exception as e:
+        print(f"Error processing item {idx}: {e}")
+        continue
+
+with open(MOVIES_JSON, 'w') as f:
+    json.dump(movies, f, indent=2)
+
+print(f'Processed {len(movies)} movies. Updated {MOVIES_JSON}.')
